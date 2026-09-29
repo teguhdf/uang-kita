@@ -36,19 +36,14 @@ export interface UpdateProfileData {
 	email?: string;
 	phone?: string | null;
 	avatar?: string | null;
+	is_verified?: number;
 }
 
 export const UserRepository = {
-	/**
-	 * Find user by ID
-	 */
 	async findById(id: string): Promise<UserRow | undefined> {
 		return DB.get<UserRow>("SELECT * FROM users WHERE id = ?", [id]);
 	},
 
-	/**
-	 * Find user by email
-	 */
 	async findByEmail(email: string): Promise<UserRow | undefined> {
 		return DB.get<UserRow>(
 			"SELECT * FROM users WHERE LOWER(email) = LOWER(?)",
@@ -56,16 +51,10 @@ export const UserRepository = {
 		);
 	},
 
-	/**
-	 * Find user by phone
-	 */
 	async findByPhone(phone: string): Promise<UserRow | undefined> {
 		return DB.get<UserRow>("SELECT * FROM users WHERE phone = ?", [phone]);
 	},
 
-	/**
-	 * Create new user
-	 */
 	async create(data: CreateUserData): Promise<UserRow> {
 		const now = Date.now();
 
@@ -92,9 +81,6 @@ export const UserRepository = {
 		return user;
 	},
 
-	/**
-	 * Update user profile
-	 */
 	async updateProfile(id: string, data: UpdateProfileData): Promise<void> {
 		const sets: string[] = [];
 		const params: unknown[] = [];
@@ -115,6 +101,10 @@ export const UserRepository = {
 			sets.push("avatar = ?");
 			params.push(data.avatar);
 		}
+		if (data.is_verified !== undefined) {
+			sets.push("is_verified = ?");
+			params.push(data.is_verified);
+		}
 
 		sets.push("updated_at = ?");
 		params.push(Date.now());
@@ -123,9 +113,6 @@ export const UserRepository = {
 		DB.run(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`, params);
 	},
 
-	/**
-	 * Update password
-	 */
 	async updatePassword(id: string, hashedPassword: string): Promise<void> {
 		DB.run("UPDATE users SET password = ?, updated_at = ? WHERE id = ?", [
 			hashedPassword,
@@ -134,35 +121,22 @@ export const UserRepository = {
 		]);
 	},
 
-	/**
-	 * Delete user by ID
-	 */
 	async delete(id: string): Promise<void> {
 		DB.run("DELETE FROM users WHERE id = ?", [id]);
 	},
 
-	/**
-	 * Delete multiple users
-	 */
 	async deleteMany(ids: string[]): Promise<void> {
 		if (ids.length === 0) return;
-		// Build parameterized IN clause — ids length is safe (not user-controlled)
 		const placeholders = ids.map(() => "?").join(",");
 		const sql = "DELETE FROM users WHERE id IN (" + placeholders + ")";
 		DB.run(sql, ids);
 	},
 
-	/**
-	 * Check if email exists
-	 */
 	async emailExists(email: string): Promise<boolean> {
 		const user = await this.findByEmail(email);
 		return !!user;
 	},
 
-	/**
-	 * Get all users (for admin)
-	 */
 	async getAll(limit: number = 100, offset: number = 0): Promise<UserRow[]> {
 		return DB.all<UserRow>("SELECT * FROM users LIMIT ? OFFSET ?", [
 			limit,
