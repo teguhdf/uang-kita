@@ -1,5 +1,6 @@
 import AuthHandler from "../app/handlers/auth.handler";
 import AppHandler from "../app/handlers/app.handler";
+import UangKitaHandler from "../app/handlers/uang-kita.handler";
 import PublicHandler from "../app/handlers/public.handler";
 import UploadHandler from "../app/handlers/upload.handler";
 import S3Handler from "../app/handlers/s3.handler";
@@ -117,12 +118,16 @@ Route.post("/reset-password", [authRateLimit], AuthHandler.resetPassword);
  * These routes require authentication
  * ------------------------------------------------
  * GET   /home - User dashboard
+ * GET   /onboarding - Monthly money setup
+ * POST  /onboarding - Save monthly money setup
  * GET   /profile - User profile
  * POST  /change-profile - Update profile
  * POST  /change-password - Change password
  * DELETE /users - Delete users (admin only)
  */
 Route.get("/home", [authRequired], AppHandler.homePage);
+Route.get("/onboarding", [authRequired], UangKitaHandler.onboardingPage);
+Route.post("/onboarding", [authRequired], UangKitaHandler.saveOnboarding);
 Route.get("/profile", [authRequired], AppHandler.profilePage);
 Route.post("/change-profile", [authRequired], AppHandler.changeProfile);
 Route.post("/change-password", [authRequired], AuthHandler.changePassword);
