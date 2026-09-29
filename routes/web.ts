@@ -9,7 +9,6 @@ import AssetHandler from "../app/handlers/asset.handler";
 import { authRequired } from "../app/middlewares/auth.middleware";
 import HyperExpress from "hyper-express";
 
-// Rate limiting middleware
 import {
 	authRateLimit,
 	apiRateLimit,
@@ -20,16 +19,11 @@ import {
 
 const Route = new HyperExpress.Router();
 
-/**
- * Public Routes
- */
+/** Public Routes */
 Route.get("/", PublicHandler.index);
-Route.get("/test", PublicHandler.test);
-Route.get("/test2", PublicHandler.test2);
+Route.get("/healthz", PublicHandler.health);
 
-/**
- * Upload Routes
- */
+/** Upload Routes */
 Route.post(
 	"/api/upload/image",
 	[authRequired, uploadRateLimit],
@@ -41,9 +35,7 @@ Route.post(
 	UploadHandler.uploadFile,
 );
 
-/**
- * S3 Routes
- */
+/** S3 Routes */
 Route.post(
 	"/api/s3/signed-url",
 	[authRequired, uploadRateLimit],
