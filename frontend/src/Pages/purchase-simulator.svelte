@@ -1,34 +1,47 @@
 <script>
+  import { router } from '@inertiajs/svelte'
   import {
     AlertTriangle,
     ArrowRight,
     Bell,
     CheckCircle2,
+    CircleAlert,
     CircleDollarSign,
+    Clock3,
+    History,
+    LoaderCircle,
     MessageCircleMore,
     ReceiptText,
     ShieldCheck,
     ShoppingBag,
     WalletCards,
+    XCircle,
   } from 'lucide-svelte'
   import AppShell from '../Components/UangKita/AppShell.svelte'
 
-  let { overview } = $props()
+  let { overview, flash } = $props()
   let itemName = $state('')
   let purchaseAmount = $state(0)
+  let isSaving = $state(false)
+  let savingOutcome = $state('')
+  let localError = $state('')
 
   let flexibleBefore = $derived(Number(overview?.metrics?.flexibleAmount || 0))
+  let currentDeficit = $derived(Number(overview?.metrics?.deficitAmount || 0))
   let daysRemaining = $derived(Math.max(1, Number(overview?.metrics?.daysRemaining || 1)))
   let normalizedAmount = $derived(Math.max(0, Number(purchaseAmount || 0)))
-  let flexibleAfter = $derived(Math.max(0, flexibleBefore - normalizedAmount))
-  let deficitAfter = $derived(Math.max(0, normalizedAmount - flexibleBefore))
+  let currentHeadroom = $derived(flexibleBefore - currentDeficit)
+  let flexibleAfter = $derived(Math.max(0, currentHeadroom - normalizedAmount))
+  let deficitAfter = $derived(Math.max(0, -(currentHeadroom - normalizedAmount)))
   let safeDailyAfter = $derived(Math.floor(flexibleAfter / daysRemaining))
   let safeWeeklyAfter = $derived(Math.floor(flexibleAfter / Math.max(1, daysRemaining / 7)))
+  let canSaveDecision = $derived(itemName.trim().length >= 2 && normalizedAmount > 0 && !isSaving)
+  let canBuy = $derived(canSaveDecision && normalizedAmount <= Number(overview?.plan?.available_money || 0))
 
   let impactState = $derived(
     normalizedAmount <= 0
       ? 'empty'
-      : normalizedAmount > flexibleBefore
+      : currentDeficit > 0 || normalizedAmount > flexibleBefore
         ? 'over'
         : normalizedAmount === flexibleBefore
           ? 'all'
@@ -54,11 +67,68 @@
       maximumFractionDigits: 0,
     }).format(Number(value || 0))
   }
+
+  function formatDecisionDate(value) {
+    if (!value) return '-'
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(Number(value)))
+  }
+
+  function outcomeLabel(value) {
+    if (value === 'bought') return 'Beli'
+    if (value === 'later') return 'Nanti dulu'
+    return 'Batal beli'
+  }
+
+  function decisionLevelLabel(value) {
+    if (value === 'free') return 'Bebas'
+    if (value === 'notify') return 'Kasih tahu'
+    if (value === 'discuss') return 'Ngobrol dulu'
+    return 'Belum diatur'
+  }
+
+  function saveDecision(outcome) {
+    localError = ''
+    if (itemName.trim().length < 2) {
+      localError = 'Tulis nama barang atau kebutuhan dulu.'
+      return
+    }
+    if (normalizedAmount <= 0) {
+      localError = 'Masukkan harga lebih dari Rp0.'
+      return
+    }
+    if (outcome === 'bought' && normalizedAmount > Number(overview?.plan?.available_money || 0)) {
+      localError = 'Nominal ini lebih besar daripada uang yang tersedia saat ini.'
+      return
+    }
+
+    isSaving = true
+    savingOutcome = outcome
+    router.post('/keputusan', {
+      item_name: itemName.trim(),
+      amount: normalizedAmount,
+      outcome,
+    }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        itemName = ''
+        purchaseAmount = 0
+      },
+      onFinish: () => {
+        isSaving = false
+        savingOutcome = ''
+      },
+    })
+  }
 </script>
 
 <svelte:head>
   <title>Aman Kalau Dibeli? · UANG KITA</title>
-  <meta name="description" content="Lihat dampak pembelian ke uang fleksibel dan kesepakatan pasangan sebelum uang keluar." />
+  <meta name="description" content="Lihat dampak pembelian ke uang fleksibel, putuskan bersama, dan simpan riwayat keputusan." />
 </svelte:head>
 
 <AppShell active="decisions">
@@ -67,9 +137,22 @@
       <p class="text-xs font-semibold text-[#E1463D]">Keputusan</p>
       <h1 class="mt-2 text-[30px] font-semibold leading-[1.08] tracking-[-0.045em] text-[#1F1F1F] sm:text-[38px]">Aman kalau dibeli?</h1>
       <p class="mt-3 max-w-2xl text-sm leading-6 text-[#68635F] sm:text-[15px]">
-        Cek dampak pembelian ke uang fleksibel kalian dan lihat cara mengambil keputusan sesuai kesepakatan berdua.
+        Cek dampaknya dulu, lalu simpan keputusan supaya kalian berdua punya konteks yang sama.
       </p>
     </section>
+
+    {#if flash?.success}
+      <div class="mb-4 flex items-start gap-3 rounded-2xl border border-[#DDE8D9] bg-[#F4F8F2] p-4 text-[#486043]">
+        <CheckCircle2 class="mt-0.5 shrink-0" size={18} />
+        <p class="text-sm leading-5">{flash.success}</p>
+      </div>
+    {/if}
+    {#if flash?.error || localError}
+      <div class="mb-4 flex items-start gap-3 rounded-2xl border border-[#F1D3CF] bg-[#FFF4F2] p-4 text-[#9A4038]">
+        <CircleAlert class="mt-0.5 shrink-0" size={18} />
+        <p class="text-sm leading-5">{localError || flash?.error}</p>
+      </div>
+    {/if}
 
     <div class="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
       <section class="uk-card p-5 sm:p-6">
@@ -77,16 +160,16 @@
           <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FFF1EF] text-[#E1463D]"><ShoppingBag size={19} /></div>
           <div>
             <h2 class="text-base font-semibold text-[#1F1F1F]">Coba satu pembelian</h2>
-            <p class="mt-1 text-xs leading-5 text-[#77716D]">Simulasi saja. Belum mengubah data bulan ini.</p>
+            <p class="mt-1 text-xs leading-5 text-[#77716D]">Simulasi tidak mengubah angka sampai kalian memilih keputusan.</p>
           </div>
         </div>
 
         <div class="mt-6 space-y-4">
           <div>
-            <label for="item_name" class="mb-2 block text-sm font-semibold text-[#3F3B38]">Nama barang</label>
+            <label for="item_name" class="mb-2 block text-sm font-semibold text-[#3F3B38]">Mau beli apa?</label>
             <div class="relative">
               <ReceiptText class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#8C8782]" size={18} />
-              <input id="item_name" type="text" bind:value={itemName} placeholder="Contoh: sepatu lari" class="uk-input py-3.5 pl-12 pr-4 text-[15px] placeholder:text-[#A39D98]" />
+              <input id="item_name" type="text" maxlength="120" bind:value={itemName} placeholder="Contoh: sepatu lari" class="uk-input py-3.5 pl-12 pr-4 text-[15px] placeholder:text-[#A39D98]" />
             </div>
           </div>
 
@@ -134,7 +217,7 @@
             <div class="rounded-2xl border border-[#F2DED9] bg-[#FFF8F6] p-4">
               <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#B0443C]">Setelah beli</p>
               <p class="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#1F1F1F]">{rupiah(flexibleAfter)}</p>
-              <p class="mt-1 text-xs text-[#77716D]">{#if deficitAfter > 0}Kurang {rupiah(deficitAfter)} dari ruang fleksibel.{:else}Sisa sampai pemasukan berikutnya.{/if}</p>
+              <p class="mt-1 text-xs text-[#77716D]">{#if deficitAfter > 0}Defisit menjadi {rupiah(deficitAfter)}.{:else}Sisa sampai pemasukan berikutnya.{/if}</p>
             </div>
           </div>
         </section>
@@ -147,10 +230,10 @@
             <div>
               {#if impactState === 'empty'}
                 <h2 class="text-lg font-semibold text-[#1F1F1F]">Masukkan harga untuk melihat hasil.</h2>
-                <p class="mt-1 text-sm leading-6 text-[#68635F]">UANG KITA akan membandingkan kondisi sebelum dan sesudah tanpa menyimpan transaksi.</p>
+                <p class="mt-1 text-sm leading-6 text-[#68635F]">UANG KITA akan membandingkan kondisi sebelum dan sesudah.</p>
               {:else if impactState === 'over'}
                 <h2 class="text-lg font-semibold text-[#1F1F1F]">Pembelian ini melewati ruang fleksibel.</h2>
-                <p class="mt-1 text-sm leading-6 text-[#68635F]">Selisihnya {rupiah(deficitAfter)}. Kalau tetap dilakukan, ada alokasi lain yang harus berubah.</p>
+                <p class="mt-1 text-sm leading-6 text-[#68635F]">Kalau tetap dibeli, rencana bulan ini masuk defisit {rupiah(deficitAfter)}.</p>
               {:else if impactState === 'all'}
                 <h2 class="text-lg font-semibold text-[#1F1F1F]">Pembelian ini menghabiskan seluruh ruang fleksibel.</h2>
                 <p class="mt-1 text-sm leading-6 text-[#68635F]">Setelahnya tidak ada sisa fleksibel sampai pemasukan berikutnya.</p>
@@ -203,7 +286,68 @@
             </div>
           </div>
         </section>
+
+        <section class="rounded-[24px] border border-[#EEEAE6] bg-white p-5 sm:p-6">
+          <p class="text-xs font-semibold text-[#E1463D]">Putuskan sekarang</p>
+          <h2 class="mt-1 text-base font-semibold text-[#1F1F1F]">Apa keputusan kalian?</h2>
+          <p class="mt-1 text-xs leading-5 text-[#77716D]">Pilih Beli hanya kalau transaksi memang terjadi. Pilihan ini akan mengurangi uang tersedia dan memperbarui Angka Aman.</p>
+
+          <div class="mt-4 grid gap-2 sm:grid-cols-3">
+            <button type="button" disabled={!canBuy} onclick={() => saveDecision('bought')} class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#E1463D] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#C9362E] disabled:cursor-not-allowed disabled:opacity-40">
+              {#if isSaving && savingOutcome === 'bought'}<LoaderCircle class="animate-spin" size={17} />{:else}<CheckCircle2 size={17} />{/if}
+              Beli
+            </button>
+            <button type="button" disabled={!canSaveDecision} onclick={() => saveDecision('later')} class="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#E4DFDB] bg-[#FAFAF8] px-4 py-3 text-sm font-semibold text-[#1F1F1F] transition hover:bg-[#F4F1EE] disabled:cursor-not-allowed disabled:opacity-40">
+              {#if isSaving && savingOutcome === 'later'}<LoaderCircle class="animate-spin" size={17} />{:else}<Clock3 size={17} />{/if}
+              Nanti dulu
+            </button>
+            <button type="button" disabled={!canSaveDecision} onclick={() => saveDecision('cancelled')} class="inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-[#77716D] transition hover:bg-[#FAFAF8] disabled:cursor-not-allowed disabled:opacity-40">
+              {#if isSaving && savingOutcome === 'cancelled'}<LoaderCircle class="animate-spin" size={17} />{:else}<XCircle size={17} />{/if}
+              Batal beli
+            </button>
+          </div>
+
+          {#if normalizedAmount > Number(overview?.plan?.available_money || 0)}
+            <p class="mt-3 text-[11px] leading-5 text-[#A0443D]">Tombol Beli dinonaktifkan karena harga lebih besar daripada uang tersedia saat ini. Kalian tetap bisa menyimpan keputusan Nanti dulu atau Batal beli.</p>
+          {/if}
+        </section>
       </div>
     </div>
+
+    <section class="mt-7">
+      <div class="mb-3 flex items-end justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-[#E1463D]"><History size={16} /><p class="text-xs font-semibold">Riwayat bersama</p></div>
+          <h2 class="mt-1 text-lg font-semibold tracking-[-0.025em] text-[#1F1F1F]">Keputusan terakhir</h2>
+        </div>
+        <p class="text-[11px] text-[#8A8580]">8 terbaru</p>
+      </div>
+
+      {#if overview?.recentDecisions?.length}
+        <div class="overflow-hidden rounded-[24px] border border-[#EEEAE6] bg-white">
+          {#each overview.recentDecisions as decision, index}
+            <div class="flex items-start gap-3 p-4 sm:items-center sm:p-5 {index > 0 ? 'border-t border-[#F1EEEA]' : ''}">
+              <div class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl {decision.outcome === 'bought' ? 'bg-[#FFF1EF] text-[#E1463D]' : decision.outcome === 'later' ? 'bg-[#FFF7EA] text-[#B8791D]' : 'bg-[#F4F1EE] text-[#77716D]'}">
+                {#if decision.outcome === 'bought'}<ShoppingBag size={18} />{:else if decision.outcome === 'later'}<Clock3 size={18} />{:else}<XCircle size={18} />{/if}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p class="truncate text-sm font-semibold text-[#1F1F1F]">{decision.item_name}</p>
+                  <span class="rounded-full bg-[#FAFAF8] px-2 py-0.5 text-[10px] font-semibold text-[#68635F]">{outcomeLabel(decision.outcome)}</span>
+                </div>
+                <p class="mt-1 text-xs text-[#77716D]">{rupiah(decision.amount)} · {decisionLevelLabel(decision.decision_level)} · oleh {decision.actor_name || 'Pengguna'}</p>
+              </div>
+              <p class="shrink-0 text-[10px] text-[#9B958F]">{formatDecisionDate(decision.created_at)}</p>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="rounded-[24px] border border-dashed border-[#E4DFDB] bg-[#FAFAF8] p-6 text-center">
+          <History class="mx-auto text-[#AAA39D]" size={22} />
+          <p class="mt-3 text-sm font-semibold text-[#1F1F1F]">Belum ada keputusan tersimpan.</p>
+          <p class="mt-1 text-xs text-[#817C77]">Simulasikan satu kebutuhan, lalu pilih Beli, Nanti dulu, atau Batal beli.</p>
+        </div>
+      {/if}
+    </section>
   </div>
 </AppShell>
