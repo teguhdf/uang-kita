@@ -94,6 +94,8 @@ export interface SavePurchaseDecisionData {
 	safe_daily_after: number;
 	safe_weekly_before: number;
 	safe_weekly_after: number;
+	expected_available_money: number;
+	expected_plan_updated_at: number;
 }
 
 export const UangKitaRepository = {
@@ -179,14 +181,12 @@ export const UangKitaRepository = {
 				"INSERT INTO households (id, name, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
 				[householdId, householdName, ownerUserId, now, now],
 			);
-
 			DB.run(
 				`INSERT INTO household_members
          (id, household_id, user_id, display_name, role, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, 'owner', 'active', ?, ?)`,
 				[randomUUID(), householdId, ownerUserId, ownerName, now, now],
 			);
-
 			DB.run(
 				`INSERT INTO household_members
          (id, household_id, user_id, display_name, role, status, created_at, updated_at)
@@ -199,7 +199,6 @@ export const UangKitaRepository = {
 			"SELECT * FROM households WHERE id = ?",
 			[householdId],
 		);
-
 		if (!household) throw new Error("Failed to create household");
 		return household;
 	},
@@ -272,7 +271,6 @@ export const UangKitaRepository = {
        WHERE id = ? AND user_id IS NULL AND status = 'pending'`,
 			[userId, displayName || pending.display_name, Date.now(), pending.id],
 		);
-
 		return result.changes > 0;
 	},
 
@@ -353,6 +351,30 @@ export const UangKitaRepository = {
 		const now = Date.now();
 
 		DB.transaction(() => {
+			if (data.outcome === "bought") {
+				const balanceUpdate = DB.run(
+					`UPDATE monthly_plans
+         SET available_money = available_money - ?, updated_at = ?
+         WHERE household_id = ?
+           AND period = ?
+           AND available_money = ?
+           AND updated_at = ?
+           AND available_money >= ?`,
+					[
+						data.amount,
+						now,
+						householdId,
+						data.period,
+						data.expected_available_money,
+						data.expected_plan_updated_at,
+						data.amount,
+					],
+				);
+				if (balanceUpdate.changes !== 1) {
+					throw new Error("Purchase balance changed");
+				}
+			}
+
 			DB.run(
 				`INSERT INTO purchase_decisions (
          id, household_id, created_by, period, item_name, amount, outcome,
@@ -380,15 +402,6 @@ export const UangKitaRepository = {
 					now,
 				],
 			);
-
-			if (data.outcome === "bought") {
-				DB.run(
-					`UPDATE monthly_plans
-         SET available_money = available_money - ?, updated_at = ?
-         WHERE household_id = ? AND period = ?`,
-					[data.amount, now, householdId, data.period],
-				);
-			}
 		});
 
 		const decision = DB.get<PurchaseDecisionRow>(
