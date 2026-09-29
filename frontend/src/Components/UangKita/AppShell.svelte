@@ -38,13 +38,13 @@
 
 <div class="min-h-screen bg-white text-[#1F1F1F]" style="color-scheme: light;">
     <aside class="fixed inset-y-0 left-0 z-30 hidden w-[228px] border-r border-[#EEEAE6] bg-white lg:flex lg:flex-col">
-        <div class="border-b border-[#F1EEEA] px-5 py-6">
+        <div class="border-b border-[#F1EEEA] px-5 py-5">
             <a href="/home" use:inertia class="block" aria-label="UANG KITA beranda">
-                <img src="/public/sedalam-ini-logo.svg" alt="Sedalam Ini. UANG KITA" class="h-auto w-[162px]" />
+                <img src="/public/sedalam-ini-logo.svg" alt="Sedalam Ini. UANG KITA" class="h-auto w-[166px]" />
             </a>
         </div>
 
-        <nav class="flex-1 px-3 py-5">
+        <nav class="flex-1 px-3 py-4">
             <div class="space-y-1.5">
                 {#each navItems as item}
                     {@const Icon = item.icon}
@@ -69,8 +69,12 @@
 
         <div class="border-t border-[#F1EEEA] p-3">
             <a href="/profile" use:inertia class="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-[#FAF8F6]">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1F1F1F] text-xs font-bold text-white">
-                    {initials(user?.name)}
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1F1F1F] text-xs font-bold text-white">
+                    {#if user?.avatar}
+                        <img src={user.avatar} alt="Foto profil" class="h-full w-full object-cover" />
+                    {:else}
+                        {initials(user?.name)}
+                    {/if}
                 </div>
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-semibold text-[#1F1F1F]">{user?.name || "Pengguna"}</p>
@@ -90,24 +94,28 @@
     </aside>
 
     <header class="sticky top-0 z-20 border-b border-[#EEEAE6] bg-white/96 backdrop-blur lg:hidden">
-        <div class="mx-auto flex h-[66px] max-w-xl items-center justify-between px-4">
+        <div class="mx-auto flex h-[62px] max-w-xl items-center justify-between px-4">
             <a href="/home" use:inertia class="flex items-center" aria-label="UANG KITA beranda">
-                <img src="/public/sedalam-ini-logo.svg" alt="Sedalam Ini. UANG KITA" class="h-auto w-[126px]" />
+                <img src="/public/sedalam-ini-logo.svg" alt="Sedalam Ini. UANG KITA" class="h-auto w-[138px]" />
             </a>
-            <a href="/profile" use:inertia aria-label="Buka profil" class="flex h-9 w-9 items-center justify-center rounded-full bg-[#1F1F1F] text-xs font-bold text-white">
-                {initials(user?.name)}
+            <a href="/profile" use:inertia aria-label="Buka profil" class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#1F1F1F] text-xs font-bold text-white">
+                {#if user?.avatar}
+                    <img src={user.avatar} alt="Foto profil" class="h-full w-full object-cover" />
+                {:else}
+                    {initials(user?.name)}
+                {/if}
             </a>
         </div>
     </header>
 
     <main class="bg-white lg:pl-[228px]">
-        <div class="mx-auto min-h-screen max-w-[1120px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-7 lg:px-8 lg:pb-12 lg:pt-8 xl:px-10">
+        <div class="mx-auto min-h-screen max-w-[1120px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pb-12 lg:pt-8 xl:px-10">
             <slot />
         </div>
     </main>
 
     <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-[#EDE9E5] bg-white/98 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(31,31,31,0.045)] backdrop-blur lg:hidden">
-        <div class="mx-auto grid h-[68px] max-w-xl grid-cols-4 px-2">
+        <div class="mx-auto grid h-[66px] max-w-xl grid-cols-4 px-2">
             {#each navItems as item}
                 {@const Icon = item.icon}
                 <a
