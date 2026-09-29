@@ -1,10 +1,3 @@
-/**
- * Inertia Service
- *
- * Minimal config — template handling (Vite, CSRF, favicon, flash)
- * handled directly by hyper-express-inertia package.
- */
-
 import { Inertia } from "hyper-express-inertia";
 import { SessionStore } from "../session/store";
 import type { Request } from "../../type";
@@ -36,15 +29,25 @@ try {
 	}
 } catch {}
 
+const isProduction = process.env.NODE_ENV === "production";
+
+function productionAsset(entryKey: string, fallback: string): string {
+	const entry = viteManifest[entryKey];
+	if (entry?.file) return entry.file;
+	return fallback;
+}
+
 export const inertia = new Inertia({
 	version: pkg.version,
 	title: "UANG KITA · Sedalam Ini.",
 	favicon: "/public/sedalam-ini-mark.svg",
 	csrf: true,
-	devUrl: process.env.NODE_ENV !== "production" ? getViteDevUrl() : undefined,
-	manifest: process.env.NODE_ENV === "production" ? viteManifest : undefined,
+	devUrl: !isProduction ? getViteDevUrl() : undefined,
+	manifest: isProduction ? viteManifest : undefined,
 	script: "src/app.js",
-	stylesheet: "src/index.css",
+	stylesheet: isProduction
+		? productionAsset("src/index.css", "src/index.css")
+		: "src/index.css",
 });
 
 inertia.shareFunc("user", (req) => {
