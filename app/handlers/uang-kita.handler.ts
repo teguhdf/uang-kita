@@ -6,6 +6,7 @@ import {
 	decisionRuleSchema,
 	monthlyPlanSchema,
 	partnerInviteSchema,
+	purchaseDecisionSchema,
 } from "../validators/uang-kita.validator";
 
 export const UangKitaHandler = {
@@ -58,6 +59,43 @@ export const UangKitaHandler = {
 		return inertia.render(request, response, "purchase-simulator", {
 			overview,
 		});
+	},
+
+	async savePurchaseDecision(request: Request, response: Response) {
+		if (!request.user) {
+			return response.status(401).json({ error: "Unauthorized" });
+		}
+
+		const body = await request.json();
+		const validationResult = Validator.validate(purchaseDecisionSchema, body);
+		if (!validationResult.success) {
+			const errors = validationResult.errors || {};
+			const firstError = Object.values(errors)[0]?.[0] || "Keputusan belum valid";
+			inertia.flash(response, "error", firstError);
+			return inertia.redirect(response, "/aman-kalau-dibeli");
+		}
+
+		try {
+			await UangKitaService.recordPurchaseDecision(
+				request.user.id,
+				validationResult.data!,
+			);
+
+			const outcomeMessage = {
+				bought: "Pembelian dicatat. Angka Aman bulan ini sudah diperbarui.",
+				later: "Keputusan 'nanti dulu' sudah disimpan.",
+				cancelled: "Keputusan batal sudah disimpan.",
+			}[validationResult.data!.outcome];
+			inertia.flash(response, "success", outcomeMessage);
+		} catch (error) {
+			const message =
+				error instanceof Error && error.message === "Purchase exceeds available money"
+					? "Nominal pembelian lebih besar daripada uang yang tersedia saat ini."
+					: "Keputusan belum bisa disimpan. Coba lagi.";
+			inertia.flash(response, "error", message);
+		}
+
+		return inertia.redirect(response, "/aman-kalau-dibeli");
 	},
 
 	async decisionRulesPage(request: Request, response: Response) {
