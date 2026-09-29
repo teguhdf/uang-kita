@@ -37,6 +37,14 @@ export interface MonthlyPlanRow {
 	updated_at: number;
 }
 
+export interface DecisionRuleRow {
+	household_id: string;
+	free_limit: number;
+	notify_limit: number;
+	created_at: number;
+	updated_at: number;
+}
+
 export interface SavePlanData {
 	monthly_income: number;
 	available_money: number;
@@ -78,6 +86,15 @@ export const UangKitaRepository = {
 		return DB.get<MonthlyPlanRow>(
 			"SELECT * FROM monthly_plans WHERE household_id = ? AND period = ? LIMIT 1",
 			[householdId, period],
+		);
+	},
+
+	async findDecisionRule(
+		householdId: string,
+	): Promise<DecisionRuleRow | undefined> {
+		return DB.get<DecisionRuleRow>(
+			"SELECT * FROM decision_rules WHERE household_id = ? LIMIT 1",
+			[householdId],
 		);
 	},
 
@@ -189,6 +206,27 @@ export const UangKitaRepository = {
 		const plan = await this.findPlanByPeriod(householdId, period);
 		if (!plan) throw new Error("Failed to save monthly plan");
 		return plan;
+	},
+
+	async upsertDecisionRule(
+		householdId: string,
+		freeLimit: number,
+		notifyLimit: number,
+	): Promise<DecisionRuleRow> {
+		const now = Date.now();
+		DB.run(
+			`INSERT INTO decision_rules (household_id, free_limit, notify_limit, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(household_id) DO UPDATE SET
+         free_limit = excluded.free_limit,
+         notify_limit = excluded.notify_limit,
+         updated_at = excluded.updated_at`,
+			[householdId, freeLimit, notifyLimit, now, now],
+		);
+
+		const rule = await this.findDecisionRule(householdId);
+		if (!rule) throw new Error("Failed to save decision rule");
+		return rule;
 	},
 };
 
