@@ -77,6 +77,21 @@ Route.post(
 	[authRequired],
 	UangKitaHandler.invitePartner,
 );
+Route.get(
+	"/undangan-pasangan",
+	[authRequired],
+	UangKitaHandler.partnerInvitePage,
+);
+Route.post(
+	"/undangan-pasangan/terima",
+	[authRequired],
+	UangKitaHandler.acceptPartnerInvite,
+);
+Route.post(
+	"/undangan-pasangan/tolak",
+	[authRequired],
+	UangKitaHandler.rejectPartnerInvite,
+);
 Route.get("/profile", [authRequired], AppHandler.profilePage);
 Route.post("/change-profile", [authRequired], AppHandler.changeProfile);
 Route.post("/auth/change-password", [authRequired], AuthHandler.changePassword);
