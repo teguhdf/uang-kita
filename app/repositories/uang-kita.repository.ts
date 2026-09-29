@@ -46,6 +46,27 @@ export interface DecisionRuleRow {
 	updated_at: number;
 }
 
+export interface PurchaseDecisionRow {
+	id: string;
+	household_id: string;
+	created_by: string;
+	period: string;
+	item_name: string;
+	amount: number;
+	outcome: "bought" | "later" | "cancelled";
+	impact_status: "within-flexible" | "uses-all-flexible" | "over-flexible";
+	decision_level: "free" | "notify" | "discuss" | "unconfigured";
+	flexible_before: number;
+	flexible_after: number;
+	deficit_after: number;
+	safe_daily_before: number;
+	safe_daily_after: number;
+	safe_weekly_before: number;
+	safe_weekly_after: number;
+	created_at: number;
+	actor_name?: string;
+}
+
 export interface SavePlanData {
 	monthly_income: number;
 	available_money: number;
@@ -56,6 +77,23 @@ export interface SavePlanData {
 	personal_owner: number;
 	personal_partner: number;
 	next_income_date: string;
+}
+
+export interface SavePurchaseDecisionData {
+	created_by: string;
+	period: string;
+	item_name: string;
+	amount: number;
+	outcome: PurchaseDecisionRow["outcome"];
+	impact_status: PurchaseDecisionRow["impact_status"];
+	decision_level: PurchaseDecisionRow["decision_level"];
+	flexible_before: number;
+	flexible_after: number;
+	deficit_after: number;
+	safe_daily_before: number;
+	safe_daily_after: number;
+	safe_weekly_before: number;
+	safe_weekly_after: number;
 }
 
 export const UangKitaRepository = {
@@ -90,12 +128,40 @@ export const UangKitaRepository = {
 		);
 	},
 
+	async findLatestPlanBeforePeriod(
+		householdId: string,
+		period: string,
+	): Promise<MonthlyPlanRow | undefined> {
+		return DB.get<MonthlyPlanRow>(
+			`SELECT * FROM monthly_plans
+       WHERE household_id = ? AND period < ?
+       ORDER BY period DESC
+       LIMIT 1`,
+			[householdId, period],
+		);
+	},
+
 	async findDecisionRule(
 		householdId: string,
 	): Promise<DecisionRuleRow | undefined> {
 		return DB.get<DecisionRuleRow>(
 			"SELECT * FROM decision_rules WHERE household_id = ? LIMIT 1",
 			[householdId],
+		);
+	},
+
+	async listRecentPurchaseDecisions(
+		householdId: string,
+		limit = 8,
+	): Promise<PurchaseDecisionRow[]> {
+		return DB.all<PurchaseDecisionRow>(
+			`SELECT pd.*, COALESCE(u.name, 'Pengguna') AS actor_name
+       FROM purchase_decisions pd
+       LEFT JOIN users u ON u.id = pd.created_by
+       WHERE pd.household_id = ?
+       ORDER BY pd.created_at DESC
+       LIMIT ?`,
+			[householdId, limit],
 		);
 	},
 
@@ -277,6 +343,60 @@ export const UangKitaRepository = {
 		const rule = await this.findDecisionRule(householdId);
 		if (!rule) throw new Error("Failed to save decision rule");
 		return rule;
+	},
+
+	async recordPurchaseDecision(
+		householdId: string,
+		data: SavePurchaseDecisionData,
+	): Promise<PurchaseDecisionRow> {
+		const id = randomUUID();
+		const now = Date.now();
+
+		DB.transaction(() => {
+			DB.run(
+				`INSERT INTO purchase_decisions (
+         id, household_id, created_by, period, item_name, amount, outcome,
+         impact_status, decision_level, flexible_before, flexible_after,
+         deficit_after, safe_daily_before, safe_daily_after,
+         safe_weekly_before, safe_weekly_after, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				[
+					id,
+					householdId,
+					data.created_by,
+					data.period,
+					data.item_name,
+					data.amount,
+					data.outcome,
+					data.impact_status,
+					data.decision_level,
+					data.flexible_before,
+					data.flexible_after,
+					data.deficit_after,
+					data.safe_daily_before,
+					data.safe_daily_after,
+					data.safe_weekly_before,
+					data.safe_weekly_after,
+					now,
+				],
+			);
+
+			if (data.outcome === "bought") {
+				DB.run(
+					`UPDATE monthly_plans
+         SET available_money = available_money - ?, updated_at = ?
+         WHERE household_id = ? AND period = ?`,
+					[data.amount, now, householdId, data.period],
+				);
+			}
+		});
+
+		const decision = DB.get<PurchaseDecisionRow>(
+			"SELECT * FROM purchase_decisions WHERE id = ? LIMIT 1",
+			[id],
+		);
+		if (!decision) throw new Error("Failed to save purchase decision");
+		return decision;
 	},
 };
 
