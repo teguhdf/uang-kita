@@ -38,5 +38,15 @@ export const decisionRuleSchema = z
 		path: ["notify_limit"],
 	});
 
+export const partnerInviteSchema = z.object({
+	email: z
+		.string()
+		.trim()
+		.toLowerCase()
+		.email("Email pasangan tidak valid")
+		.max(254, "Email pasangan terlalu panjang"),
+});
+
 export type MonthlyPlanInput = z.infer<typeof monthlyPlanSchema>;
 export type DecisionRuleInput = z.infer<typeof decisionRuleSchema>;
+export type PartnerInviteInput = z.infer<typeof partnerInviteSchema>;
