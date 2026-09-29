@@ -13,11 +13,7 @@ export interface PasswordResetTokenRow {
 }
 
 export const PasswordResetRepository = {
-	/**
-	 * Find a valid token
-	 */
 	findByToken(token: string): PasswordResetTokenRow | undefined {
-		// Compare expires_at as ISO string — SQLite datetime('now') returns different format
 		const now = new Date().toISOString();
 		return DB.get<PasswordResetTokenRow>(
 			"SELECT * FROM password_reset_tokens WHERE token = ? AND expires_at > ?",
@@ -25,9 +21,6 @@ export const PasswordResetRepository = {
 		);
 	},
 
-	/**
-	 * Create a reset token
-	 */
 	create(email: string, token: string, expiresAt: string): void {
 		DB.run(
 			"INSERT INTO password_reset_tokens (email, token, expires_at) VALUES (?, ?, ?)",
@@ -35,20 +28,18 @@ export const PasswordResetRepository = {
 		);
 	},
 
-	/**
-	 * Delete a token
-	 */
 	delete(token: string): void {
 		DB.run("DELETE FROM password_reset_tokens WHERE token = ?", [token]);
 	},
 
-	/**
-	 * Delete expired tokens
-	 */
+	deleteByEmail(email: string): void {
+		DB.run("DELETE FROM password_reset_tokens WHERE LOWER(email) = LOWER(?)", [email]);
+	},
+
 	deleteExpired(): void {
-		DB.run(
-			"DELETE FROM password_reset_tokens WHERE expires_at < datetime('now')",
-		);
+		DB.run("DELETE FROM password_reset_tokens WHERE expires_at < ?", [
+			new Date().toISOString(),
+		]);
 	},
 };
 
