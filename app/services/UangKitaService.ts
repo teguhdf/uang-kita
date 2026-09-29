@@ -338,13 +338,8 @@ export const UangKitaService = {
 		const targetHousehold = await UangKitaRepository.findHouseholdByUser(targetUser.id);
 		if (targetHousehold) throw new Error("Partner already belongs to household");
 
+		// Store the pending link only. The target account completes it on its next login.
 		await UangKitaRepository.setPartnerInviteEmail(household.id, normalizedEmail);
-		const claimed = await UangKitaRepository.claimPendingPartnerInvite(
-			targetUser.id,
-			targetUser.email,
-			targetUser.name?.trim() || partner.display_name || "Pasangan",
-		);
-		if (!claimed) throw new Error("Partner account unavailable");
 	},
 
 	async claimPartnerInvite(user: {
@@ -352,9 +347,11 @@ export const UangKitaService = {
 		email: string;
 		name?: string | null;
 	}): Promise<boolean> {
-		// Legacy pending invites are only auto-claimed for verified accounts.
 		const account = await UserRepository.findById(user.id);
-		if (!account || account.is_verified !== 1) return false;
+		if (!account) return false;
+
+		// The repository also verifies the account existed before this invitation,
+		// preventing an invitation from being claimed by registering the email later.
 		return UangKitaRepository.claimPendingPartnerInvite(
 			user.id,
 			user.email,
