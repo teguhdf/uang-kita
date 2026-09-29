@@ -61,7 +61,7 @@ describe("UANG KITA repository concurrency", () => {
 
 		await UangKitaRepository.recordPurchaseDecision(household.id, decision);
 
-		expect(() =>
+		await expect(
 			UangKitaRepository.recordPurchaseDecision(household.id, decision),
 		).rejects.toThrow("Purchase balance changed");
 
