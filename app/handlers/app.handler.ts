@@ -4,7 +4,6 @@
  */
 
 import { UserRepository } from "../repositories/user.repository";
-import { SessionRepository } from "../repositories/session.repository";
 import { SessionStore } from "../session/store";
 import Validator from "../services/Validator";
 import UangKitaService from "../services/UangKitaService";
@@ -144,9 +143,7 @@ export const AppHandler = {
 		}
 
 		const { ids } = validationResult.data!;
-		for (const id of ids) {
-			SessionRepository.deleteByUserId(id);
-		}
+		for (const id of ids) SessionStore.destroyAllForUser(id);
 		await UserRepository.deleteMany(ids);
 
 		return inertia.redirect(response, "/home");
