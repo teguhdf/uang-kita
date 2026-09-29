@@ -22,9 +22,6 @@ const Route = new HyperExpress.Router();
 
 /**
  * Public Routes
- * These routes are accessible without authentication
- * ------------------------------------------------
- * GET  / - Home page
  */
 Route.get("/", PublicHandler.index);
 Route.get("/test", PublicHandler.test);
@@ -32,10 +29,6 @@ Route.get("/test2", PublicHandler.test2);
 
 /**
  * Upload Routes
- * Routes for handling file uploads
- * ------------------------------------------------
- * POST /api/upload/image - Upload image with processing
- * POST /api/upload/file - Upload file (PDF, Word, Excel, etc.)
  */
 Route.post(
 	"/api/upload/image",
@@ -50,11 +43,6 @@ Route.post(
 
 /**
  * S3 Routes
- * Routes for handling S3 operations
- * ------------------------------------------------
- * POST /api/s3/signed-url - Generate signed URL for file upload
- * GET  /api/s3/public-url/:fileKey - Get public URL for existing file
- * GET  /api/s3/health - S3 service health check
  */
 Route.post(
 	"/api/s3/signed-url",
@@ -68,26 +56,10 @@ Route.get(
 );
 Route.get("/api/s3/health", [apiRateLimit], S3Handler.health);
 
-/**
- * Local Storage Static Files
- * Serves files from local storage
- * ------------------------------------------------
- * GET /storage/* - Serve local storage files
- */
+/** Local storage static files */
 Route.get("/storage/*", StorageHandler.serveFile);
 
-/**
- * Authentication Routes
- * Routes for handling user authentication
- * ------------------------------------------------
- * GET   /login - Login page
- * POST  /login - Process login
- * GET   /register - Registration page
- * POST  /register - Process registration
- * POST  /logout - Logout user
- * GET   /google/redirect - Google OAuth redirect
- * GET   /google/callback - Google OAuth callback
- */
+/** Authentication Routes */
 Route.get("/login", AuthHandler.loginPage);
 Route.post("/login", [authRateLimit], AuthHandler.processLogin);
 Route.get("/register", AuthHandler.registerPage);
@@ -96,15 +68,7 @@ Route.post("/logout", AuthHandler.logout);
 Route.get("/google/redirect", AuthHandler.googleRedirect);
 Route.get("/google/callback", AuthHandler.googleCallback);
 
-/**
- * Password Reset Routes
- * Routes for handling password reset
- * ------------------------------------------------
- * GET   /forgot-password - Forgot password page
- * POST  /forgot-password - Send reset password link
- * GET   /reset-password/:id - Reset password page
- * POST  /reset-password - Process password reset
- */
+/** Password Reset Routes */
 Route.get("/forgot-password", AuthHandler.forgotPasswordPage);
 Route.post(
 	"/forgot-password",
@@ -114,19 +78,7 @@ Route.post(
 Route.get("/reset-password/:id", AuthHandler.resetPasswordPage);
 Route.post("/reset-password", [authRateLimit], AuthHandler.resetPassword);
 
-/**
- * Protected Routes
- * These routes require authentication
- * ------------------------------------------------
- * GET   /home - User dashboard
- * GET   /onboarding - Monthly money setup
- * POST  /onboarding - Save monthly money setup
- * GET   /aman-kalau-dibeli - Purchase impact simulator
- * GET   /profile - User profile
- * POST  /change-profile - Update profile
- * POST  /change-password - Change password
- * DELETE /users - Delete users (admin only)
- */
+/** Protected Routes */
 Route.get("/home", [authRequired], AppHandler.homePage);
 Route.get("/onboarding", [authRequired], UangKitaHandler.onboardingPage);
 Route.post("/onboarding", [authRequired], UangKitaHandler.saveOnboarding);
@@ -135,19 +87,23 @@ Route.get(
 	[authRequired],
 	UangKitaHandler.purchaseSimulatorPage,
 );
+Route.get(
+	"/aturan-keputusan",
+	[authRequired],
+	UangKitaHandler.decisionRulesPage,
+);
+Route.post(
+	"/aturan-keputusan",
+	[authRequired],
+	UangKitaHandler.saveDecisionRules,
+);
 Route.get("/profile", [authRequired], AppHandler.profilePage);
 Route.post("/change-profile", [authRequired], AppHandler.changeProfile);
 Route.post("/change-password", [authRequired], AuthHandler.changePassword);
 Route.delete("/users", [authRequired], AppHandler.deleteUsers);
 
-/**
- * Static Asset Handling Routes
- */
+/** Static Asset Handling Routes */
 Route.get("/assets/:file", AssetHandler.distFolder);
-
-/**
- * Public Assets Catch-all Route
- */
 Route.get("/public/*", AssetHandler.publicFolder);
 
 export default Route;
