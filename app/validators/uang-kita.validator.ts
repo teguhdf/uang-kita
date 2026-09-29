@@ -10,6 +10,20 @@ const positiveAmount = amount.refine((value) => value > 0, {
 	message: "Nominal harus lebih dari 0",
 });
 
+function isStrictIsoDate(value: string): boolean {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	if (!match) return false;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const date = new Date(Date.UTC(year, month - 1, day));
+	return (
+		date.getUTCFullYear() === year &&
+		date.getUTCMonth() === month - 1 &&
+		date.getUTCDate() === day
+	);
+}
+
 export const monthlyPlanSchema = z.object({
 	partner_name: z
 		.string()
@@ -26,10 +40,7 @@ export const monthlyPlanSchema = z.object({
 	personal_partner: amount,
 	next_income_date: z
 		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal pemasukan berikutnya tidak valid")
-		.refine((value) => !Number.isNaN(new Date(`${value}T00:00:00`).getTime()), {
-			message: "Tanggal pemasukan berikutnya tidak valid",
-		}),
+		.refine(isStrictIsoDate, "Tanggal pemasukan berikutnya tidak valid"),
 });
 
 export const decisionRuleSchema = z
