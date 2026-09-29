@@ -6,39 +6,43 @@
 
 import "dotenv/config";
 import Database from "better-sqlite3";
+import { mkdirSync } from "fs";
+import path from "path";
 import type { RunResult } from "../../type/db-types";
 
-// Database configuration
-const dbConfig: Record<string, { filename: string }> = {
-	development: {
-		filename: "./data/dev.sqlite3",
-	},
-	production: {
-		filename: "./data/production.sqlite3",
-	},
-	test: {
-		filename: "./data/test.sqlite3",
-	},
-};
-
-// Get current stage
-const currentStage = process.env.DB_CONNECTION || "development";
-const config = dbConfig[currentStage];
-
-if (!config) {
-	throw new Error(
-		`Invalid database configuration for connection: ${currentStage}`,
-	);
+function databaseFilename(stage: string): string {
+	if (stage === "production") {
+		return process.env.DB_PATH || "./data/production.sqlite3";
+	}
+	if (stage === "test") {
+		return process.env.TEST_DB_PATH || "./data/test.sqlite3";
+	}
+	return process.env.DEV_DB_PATH || "./data/dev.sqlite3";
 }
 
-// Create the native database instance
-const nativeDb = new Database(config.filename);
+function ensureDatabaseDirectory(filename: string): void {
+	if (filename === ":memory:") return;
+	const directory = path.dirname(path.resolve(filename));
+	mkdirSync(directory, { recursive: true });
+}
 
-// Apply SQLite PRAGMAs for performance and correctness
-nativeDb.pragma("journal_mode = WAL");
-nativeDb.pragma("synchronous = NORMAL");
-nativeDb.pragma("foreign_keys = ON");
-nativeDb.pragma("busy_timeout = 5000");
+function openDatabase(filename: string): Database.Database {
+	ensureDatabaseDirectory(filename);
+	const db = new Database(filename);
+	db.pragma("journal_mode = WAL");
+	db.pragma("synchronous = NORMAL");
+	db.pragma("foreign_keys = ON");
+	db.pragma("busy_timeout = 5000");
+	return db;
+}
+
+const currentStage = process.env.DB_CONNECTION || "development";
+if (!["development", "production", "test"].includes(currentStage)) {
+	throw new Error(`Invalid database configuration for connection: ${currentStage}`);
+}
+
+const filename = databaseFilename(currentStage);
+const nativeDb = openDatabase(filename);
 
 /**
  * Statement cache for prepared statement reuse
@@ -74,6 +78,8 @@ interface DBService {
 	transaction<T>(fn: () => T): T;
 	/** Get the native database instance */
 	getNativeDb(): Database.Database;
+	/** Get the active database filename */
+	getFilename(): string;
 	/** Create a new connection for a specific stage */
 	getConnection(stage: string): DBService;
 }
@@ -124,17 +130,17 @@ const DB: DBService = {
 		return nativeDb;
 	},
 
+	getFilename(): string {
+		return filename;
+	},
+
 	getConnection(stage: string): DBService {
-		const connConfig = dbConfig[stage];
-		if (!connConfig) {
+		if (!["development", "production", "test"].includes(stage)) {
 			throw new Error(`Unknown database connection: ${stage}`);
 		}
-		const db = new Database(connConfig.filename);
-		db.pragma("journal_mode = WAL");
-		db.pragma("synchronous = NORMAL");
-		db.pragma("foreign_keys = ON");
-		db.pragma("busy_timeout = 5000");
 
+		const connFilename = databaseFilename(stage);
+		const db = openDatabase(connFilename);
 		const connStmtCache = new Map<string, Database.Statement>();
 
 		return {
@@ -171,6 +177,9 @@ const DB: DBService = {
 			},
 			getNativeDb(): Database.Database {
 				return db;
+			},
+			getFilename(): string {
+				return connFilename;
 			},
 			getConnection(_stage: string): DBService {
 				throw new Error("Nested getConnection not supported");
