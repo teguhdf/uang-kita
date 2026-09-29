@@ -6,6 +6,10 @@ const amount = z.coerce
 	.min(0, "Nominal tidak boleh negatif")
 	.max(1_000_000_000_000, "Nominal terlalu besar");
 
+const positiveAmount = amount.refine((value) => value > 0, {
+	message: "Nominal harus lebih dari 0",
+});
+
 export const monthlyPlanSchema = z.object({
 	partner_name: z
 		.string()
@@ -47,6 +51,17 @@ export const partnerInviteSchema = z.object({
 		.max(254, "Email pasangan terlalu panjang"),
 });
 
+export const purchaseDecisionSchema = z.object({
+	item_name: z
+		.string()
+		.trim()
+		.min(2, "Nama pembelian minimal 2 karakter")
+		.max(120, "Nama pembelian terlalu panjang"),
+	amount: positiveAmount,
+	outcome: z.enum(["bought", "later", "cancelled"]),
+});
+
 export type MonthlyPlanInput = z.infer<typeof monthlyPlanSchema>;
 export type DecisionRuleInput = z.infer<typeof decisionRuleSchema>;
 export type PartnerInviteInput = z.infer<typeof partnerInviteSchema>;
+export type PurchaseDecisionInput = z.infer<typeof purchaseDecisionSchema>;
