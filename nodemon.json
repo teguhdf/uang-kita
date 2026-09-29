@@ -1,0 +1,6 @@
+{
+  "watch": ["app/**", "templates/**", "server.ts", "routes/**"],
+  "ext": ".ts,.js",
+  "ignore": [],
+  "exec": "tsx -r dotenv/config server.ts"
+}
