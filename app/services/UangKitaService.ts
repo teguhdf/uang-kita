@@ -12,6 +12,17 @@ export interface MoneyMetrics {
 	safeWeekly: number;
 }
 
+export interface PurchaseImpact {
+	purchaseAmount: number;
+	flexibleBefore: number;
+	flexibleAfter: number;
+	deficitAfter: number;
+	safeDailyAfter: number;
+	safeWeeklyAfter: number;
+	daysRemaining: number;
+	status: "within-flexible" | "uses-all-flexible" | "over-flexible";
+}
+
 export interface UangKitaInput extends SavePlanData {
 	partner_name: string;
 }
@@ -75,6 +86,42 @@ export function calculateMoneyMetrics(
 		daysRemaining,
 		safeDaily,
 		safeWeekly,
+	};
+}
+
+export function simulatePurchaseImpact(
+	metrics: MoneyMetrics,
+	amount: number,
+): PurchaseImpact {
+	const purchaseAmount = Math.max(0, Math.floor(Number(amount) || 0));
+	const rawAfter = metrics.flexibleAmount - purchaseAmount;
+	const flexibleAfter = Math.max(0, rawAfter);
+	const deficitAfter = Math.max(0, -rawAfter);
+	const daysRemaining = Math.max(1, metrics.daysRemaining);
+	const safeDailyAfter = Math.floor(flexibleAfter / daysRemaining);
+	const safeWeeklyAfter = Math.floor(
+		flexibleAfter / Math.max(1, daysRemaining / 7),
+	);
+
+	let status: PurchaseImpact["status"] = "within-flexible";
+	if (purchaseAmount > metrics.flexibleAmount) {
+		status = "over-flexible";
+	} else if (
+		purchaseAmount > 0 &&
+		purchaseAmount === metrics.flexibleAmount
+	) {
+		status = "uses-all-flexible";
+	}
+
+	return {
+		purchaseAmount,
+		flexibleBefore: metrics.flexibleAmount,
+		flexibleAfter,
+		deficitAfter,
+		safeDailyAfter,
+		safeWeeklyAfter,
+		daysRemaining,
+		status,
 	};
 }
 
