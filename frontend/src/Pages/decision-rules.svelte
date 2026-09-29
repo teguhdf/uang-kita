@@ -31,7 +31,7 @@
   }
 
   function submitForm() {
-    if (!isValid) return
+    if (!isValid || isLoading) return
     isLoading = true
     router.post('/aturan-keputusan', form, {
       preserveScroll: true,
@@ -184,6 +184,22 @@
               Simpan aturan
             {/if}
           </button>
+
+          <div class="mt-3 min-h-[44px]" aria-live="polite">
+            {#if flash?.success}
+              <div class="flex items-start gap-2 rounded-2xl bg-[#EAF2E7] px-3.5 py-3 text-[#456144]">
+                <CheckCircle2 class="mt-0.5 shrink-0" size={16} strokeWidth={1.9} />
+                <p class="text-xs leading-5">{flash.success}</p>
+              </div>
+            {:else if flash?.error}
+              <div class="flex items-start gap-2 rounded-2xl bg-[#F8E5E1] px-3.5 py-3 text-[#8B4D45]">
+                <CircleAlert class="mt-0.5 shrink-0" size={16} strokeWidth={1.9} />
+                <p class="text-xs leading-5">{flash.error}</p>
+              </div>
+            {:else}
+              <p class="px-1 text-[11px] leading-5 text-[#BFB2AA]">Setelah tersimpan, aturan ini langsung dipakai di menu Keputusan.</p>
+            {/if}
+          </div>
         </section>
       </aside>
     </form>
