@@ -62,12 +62,8 @@ webserver.set_error_handler(
 			ip: request.ip,
 		});
 
-		if (error.code === "SQLITE_ERROR") {
-			response.status(500);
-		}
-
 		const isDevelopment = process.env.NODE_ENV !== "production";
-		response.status(response.statusCode || 500).json({
+		response.status(500).json({
 			error: isDevelopment ? error.message : "Internal server error",
 			...(isDevelopment && { stack: error.stack, code: error.code }),
 		});
