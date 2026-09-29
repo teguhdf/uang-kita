@@ -110,6 +110,7 @@ Route.post(
 Route.get("/profile", [authRequired], AppHandler.profilePage);
 Route.post("/change-profile", [authRequired], AppHandler.changeProfile);
 Route.post("/change-password", [authRequired], AuthHandler.changePassword);
+Route.post("/auth/change-password", [authRequired], AuthHandler.changePassword);
 Route.delete("/users", [authRequired], AppHandler.deleteUsers);
 
 /** Static Asset Handling Routes */
