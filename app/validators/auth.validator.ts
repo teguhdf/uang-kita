@@ -1,42 +1,26 @@
 import { z } from "zod";
 import { field } from "./common.validator";
 
-interface EmailPhoneData {
-	email?: string;
-	phone?: string;
-}
-
 const newPassword = z
 	.string()
 	.min(8, "Kata sandi minimal 8 karakter")
 	.max(128, "Kata sandi terlalu panjang");
 
-export const loginSchema = z
-	.object({
-		email: z.string().optional(),
-		phone: z.string().optional(),
-		password: z.string().min(1, "Kata sandi wajib diisi").max(128),
-	})
-	.refine((data: EmailPhoneData) => data.email || data.phone, {
-		message: "Email atau nomor HP wajib diisi",
-		path: ["email"],
-	});
+export const loginSchema = z.object({
+	email: field.email,
+	password: z.string().min(1, "Kata sandi wajib diisi").max(128),
+});
 
 export const registerSchema = z.object({
 	name: field.name,
 	email: field.email,
+	phone: field.phone.optional(),
 	password: newPassword,
 });
 
-export const forgotPasswordSchema = z
-	.object({
-		email: z.string().optional(),
-		phone: z.string().optional(),
-	})
-	.refine((data: EmailPhoneData) => data.email || data.phone, {
-		message: "Email atau nomor HP wajib diisi",
-		path: ["email"],
-	});
+export const forgotPasswordSchema = z.object({
+	email: field.email,
+});
 
 export const resetPasswordSchema = z.object({
 	id: z.string().min(1, "Token tidak valid"),
