@@ -1,17 +1,14 @@
 /**
  * Public Handler
- * Handles public pages (home, about, etc.)
+ * Handles public pages and health checks.
  */
 
 import { Response, Request } from "../../type";
 import { view } from "../services/View";
+import DB from "../services/DB";
 
 export const PublicHandler = {
-  /**
-   * Display home page (landing page)
-   * GET /
-   */
-  async index(request: Request, response: Response) {
+  async index(_request: Request, response: Response) {
     try {
       const html = view("index.html");
       return response.type("html").send(html);
@@ -21,19 +18,28 @@ export const PublicHandler = {
     }
   },
 
-  /**
-   * Test endpoint
-   * GET /test
-   */
-  async test(request: Request, response: Response) {
+  async health(_request: Request, response: Response) {
+    try {
+      const probe = DB.get<{ ok: number }>("SELECT 1 AS ok");
+      if (!probe || probe.ok !== 1) {
+        return response.status(503).json({ status: "unhealthy" });
+      }
+
+      return response.json({
+        status: "ok",
+        uptime: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      return response.status(503).json({ status: "unhealthy" });
+    }
+  },
+
+  async test(_request: Request, response: Response) {
     return response.send("test");
   },
 
-  /**
-   * Test endpoint 2
-   * GET /test2
-   */
-  async test2(request: Request, response: Response) {
+  async test2(_request: Request, response: Response) {
     return response.type("html").send(view("test.html"));
   },
 };
