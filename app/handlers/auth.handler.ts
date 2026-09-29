@@ -69,14 +69,8 @@ export const AuthHandler = {
 				return inertia.redirect(response, "/login");
 			}
 
-			const { email, password, phone } = validationResult.data!;
-			let user: User | undefined;
-			if (email && email.includes("@")) {
-				user = await UserRepository.findByEmail(email.trim().toLowerCase());
-			} else if (phone) {
-				user = await UserRepository.findByPhone(phone.trim());
-			}
-
+			const { email, password } = validationResult.data!;
+			const user = await UserRepository.findByEmail(email.trim().toLowerCase());
 			if (!user) {
 				inertia.flash(response, "error", "Email atau kata sandi tidak sesuai.");
 				return inertia.redirect(response, "/login");
@@ -116,7 +110,7 @@ export const AuthHandler = {
 				return inertia.redirect(response, "/register");
 			}
 
-			const { password, name } = validationResult.data!;
+			const { password, name, phone } = validationResult.data!;
 			const email = validationResult.data!.email.trim().toLowerCase();
 			const existingUser = await UserRepository.findByEmail(email);
 			if (existingUser) {
@@ -129,6 +123,7 @@ export const AuthHandler = {
 				email,
 				password: await Authenticate.hash(password),
 				name: name.trim(),
+				phone: phone?.trim() || null,
 			});
 
 			await claimPendingUangKitaInvite(user);
@@ -197,7 +192,6 @@ export const AuthHandler = {
 				user = await UserRepository.create({
 					id: randomUUID(),
 					email,
-					// Local password is random and unguessable for OAuth-created accounts.
 					password: await Authenticate.hash(randomBytes(32).toString("hex")),
 					name: name || null,
 					phone: null,
@@ -235,15 +229,9 @@ export const AuthHandler = {
 			return inertia.redirect(response, "/forgot-password");
 		}
 
-		const { email, phone } = validationResult.data!;
-		let user: User | undefined;
-		if (email && email.includes("@")) {
-			user = await UserRepository.findByEmail(email.trim().toLowerCase());
-		} else if (phone) {
-			user = await UserRepository.findByPhone(phone.trim());
-		}
+		const { email } = validationResult.data!;
+		const user = await UserRepository.findByEmail(email.trim().toLowerCase());
 
-		// Do not reveal whether an account exists.
 		if (!user) {
 			inertia.flash(response, "success", "Jika akun terdaftar, instruksi pemulihan akan dikirim.");
 			return inertia.redirect(response, "/forgot-password");
