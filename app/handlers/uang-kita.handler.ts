@@ -18,7 +18,6 @@ export const UangKitaHandler = {
 
 	async saveOnboarding(request: Request, response: Response) {
 		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
-
 		const body = await request.json();
 		const validationResult = Validator.validate(monthlyPlanSchema, body);
 		if (!validationResult.success) {
@@ -27,7 +26,6 @@ export const UangKitaHandler = {
 			inertia.flash(response, "error", firstError);
 			return inertia.redirect(response, "/onboarding");
 		}
-
 		await UangKitaService.saveMonthlyPlan(request.user, validationResult.data!);
 		inertia.flash(response, "success", "Kondisi bulan ini sudah tersimpan.");
 		return inertia.redirect(response, "/home");
@@ -35,23 +33,16 @@ export const UangKitaHandler = {
 
 	async purchaseSimulatorPage(request: Request, response: Response) {
 		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
-
 		const overview = await UangKitaService.getOverview(request.user.id);
 		if (!overview?.plan || !overview.metrics) {
-			inertia.flash(
-				response,
-				"error",
-				"Susun kondisi bulan ini dulu sebelum mencoba simulasi pembelian.",
-			);
+			inertia.flash(response, "error", "Susun kondisi bulan ini dulu sebelum mencoba simulasi pembelian.");
 			return inertia.redirect(response, "/onboarding");
 		}
-
 		return inertia.render(request, response, "purchase-simulator", { overview });
 	},
 
 	async savePurchaseDecision(request: Request, response: Response) {
 		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
-
 		const body = await request.json();
 		const validationResult = Validator.validate(purchaseDecisionSchema, body);
 		if (!validationResult.success) {
@@ -62,11 +53,7 @@ export const UangKitaHandler = {
 		}
 
 		try {
-			await UangKitaService.recordPurchaseDecision(
-				request.user.id,
-				validationResult.data!,
-			);
-
+			await UangKitaService.recordPurchaseDecision(request.user.id, validationResult.data!);
 			const outcomeMessage = {
 				bought: "Pembelian dicatat. Angka Aman bulan ini sudah diperbarui.",
 				later: "Keputusan 'nanti dulu' sudah disimpan.",
@@ -82,39 +69,29 @@ export const UangKitaHandler = {
 			}
 			inertia.flash(response, "error", message);
 		}
-
 		return inertia.redirect(response, "/aman-kalau-dibeli");
 	},
 
 	async decisionRulesPage(request: Request, response: Response) {
 		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
-
 		const overview = await UangKitaService.getOverview(request.user.id);
 		if (!overview?.plan) {
-			inertia.flash(
-				response,
-				"error",
-				"Susun kondisi bulan ini dulu sebelum membuat aturan keputusan.",
-			);
+			inertia.flash(response, "error", "Susun kondisi bulan ini dulu sebelum membuat aturan keputusan.");
 			return inertia.redirect(response, "/onboarding");
 		}
-
 		return inertia.render(request, response, "decision-rules", { overview });
 	},
 
 	async saveDecisionRules(request: Request, response: Response) {
 		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
-
 		const body = await request.json();
 		const validationResult = Validator.validate(decisionRuleSchema, body);
 		if (!validationResult.success) {
 			const errors = validationResult.errors || {};
-			const firstError =
-				Object.values(errors)[0]?.[0] || "Aturan keputusan belum valid";
+			const firstError = Object.values(errors)[0]?.[0] || "Aturan keputusan belum valid";
 			inertia.flash(response, "error", firstError);
 			return inertia.redirect(response, "/aturan-keputusan");
 		}
-
 		await UangKitaService.saveDecisionRule(request.user.id, validationResult.data!);
 		inertia.flash(response, "success", "Aturan keputusan kalian sudah tersimpan.");
 		return inertia.redirect(response, "/aturan-keputusan");
@@ -122,7 +99,6 @@ export const UangKitaHandler = {
 
 	async invitePartner(request: Request, response: Response) {
 		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
-
 		const body = await request.json();
 		const validationResult = Validator.validate(partnerInviteSchema, body);
 		if (!validationResult.success) {
@@ -140,7 +116,11 @@ export const UangKitaHandler = {
 
 		try {
 			await UangKitaService.invitePartner(request.user.id, email);
-			inertia.flash(response, "success", "Akun pasangan berhasil dihubungkan.");
+			inertia.flash(
+				response,
+				"success",
+				"Undangan sudah disiapkan. Minta pasangan keluar lalu masuk kembali ke akun UANG KITA miliknya untuk menyelesaikan koneksi.",
+			);
 		} catch (error) {
 			let message = "Akun pasangan belum bisa dihubungkan.";
 			if (error instanceof Error) {
@@ -156,7 +136,6 @@ export const UangKitaHandler = {
 			}
 			inertia.flash(response, "error", message);
 		}
-
 		return inertia.redirect(response, "/aturan-keputusan");
 	},
 };
