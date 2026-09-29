@@ -24,9 +24,15 @@ function isValidTimeZone(value: string): boolean {
 export function validateEnvironment(): EnvironmentCheck {
 	const errors: string[] = [];
 	const warnings: string[] = [];
-	const isProduction = process.env.NODE_ENV === "production";
+	const certificateEnabled = process.env.HAS_CERTIFICATE === "true";
 
-	if (!isProduction) return { ok: true, errors, warnings };
+	if (certificateEnabled) {
+		if (!process.env.TLS_KEY_PATH) errors.push("TLS_KEY_PATH is required when HAS_CERTIFICATE=true");
+		if (!process.env.TLS_CERT_PATH) errors.push("TLS_CERT_PATH is required when HAS_CERTIFICATE=true");
+	}
+
+	const isProduction = process.env.NODE_ENV === "production";
+	if (!isProduction) return { ok: errors.length === 0, errors, warnings };
 
 	if (process.env.DB_CONNECTION !== "production") {
 		errors.push("DB_CONNECTION must be 'production' when NODE_ENV=production");
@@ -85,7 +91,7 @@ export function validateEnvironment(): EnvironmentCheck {
 export function assertEnvironment(): EnvironmentCheck {
 	const result = validateEnvironment();
 	if (!result.ok) {
-		throw new Error(`Invalid production environment: ${result.errors.join("; ")}`);
+		throw new Error(`Invalid environment: ${result.errors.join("; ")}`);
 	}
 	return result;
 }
