@@ -4,6 +4,8 @@
  */
 
 import { UserRepository } from "../repositories/user.repository";
+import { SessionRepository } from "../repositories/session.repository";
+import { SessionStore } from "../session/store";
 import Validator from "../services/Validator";
 import UangKitaService from "../services/UangKitaService";
 import {
@@ -13,11 +15,20 @@ import {
 import type { Response, Request } from "../../type";
 import inertia from "../services/inertia";
 
+function safeUser(user: Awaited<ReturnType<typeof UserRepository.findById>>) {
+	if (!user) return null;
+	return {
+		id: user.id,
+		name: user.name,
+		email: user.email,
+		phone: user.phone,
+		avatar: user.avatar,
+		is_verified: user.is_verified,
+		is_admin: user.is_admin,
+	};
+}
+
 export const AppHandler = {
-	/**
-	 * Display home page (user dashboard)
-	 * GET /home
-	 */
 	async homePage(request: Request, response: Response) {
 		if (!request.user) {
 			return response.status(401).json({ error: "Unauthorized" });
@@ -27,18 +38,22 @@ export const AppHandler = {
 		return inertia.render(request, response, "home", { overview });
 	},
 
-	/**
-	 * Display profile page
-	 * GET /profile
-	 */
 	async profilePage(request: Request, response: Response) {
-		return inertia.render(request, response, "profile", { user: request.user });
+		if (!request.user) {
+			return response.status(401).json({ error: "Unauthorized" });
+		}
+
+		const fullUser = await UserRepository.findById(request.user.id);
+		if (!fullUser) {
+			SessionStore.destroy(request, response);
+			return SessionStore.redirect(response, "/login");
+		}
+
+		return inertia.render(request, response, "profile", {
+			user: safeUser(fullUser),
+		});
 	},
 
-	/**
-	 * Update user profile
-	 * POST /change-profile
-	 */
 	async changeProfile(request: Request, response: Response) {
 		if (!request.user) {
 			return response.status(401).json({ error: "Unauthorized" });
@@ -49,28 +64,65 @@ export const AppHandler = {
 
 		if (!validationResult.success) {
 			const errors = validationResult.errors || {};
-			const firstError = Object.values(errors)[0]?.[0] || "Validation error";
+			const firstError = Object.values(errors)[0]?.[0] || "Data profil belum valid";
 			inertia.flash(response, "error", firstError);
 			return inertia.redirect(response, "/profile");
 		}
 
-		const { name, email, phone, avatar } = validationResult.data!;
+		const currentUser = await UserRepository.findById(request.user.id);
+		if (!currentUser) {
+			SessionStore.destroy(request, response);
+			return SessionStore.redirect(response, "/login");
+		}
 
-		await UserRepository.updateProfile(request.user.id, {
-			name,
-			email,
-			phone: phone || null,
-			avatar: avatar || null,
+		const data = validationResult.data!;
+		const email = data.email.trim().toLowerCase();
+		const name = data.name.trim();
+		const phone = data.phone?.trim() || null;
+		const avatar = data.avatar || null;
+		const emailChanged = currentUser.email.toLowerCase() !== email;
+
+		const emailOwner = await UserRepository.findByEmail(email);
+		if (emailOwner && emailOwner.id !== request.user.id) {
+			inertia.flash(response, "error", "Email tersebut sudah dipakai akun lain.");
+			return inertia.redirect(response, "/profile");
+		}
+
+		try {
+			await UserRepository.updateProfile(request.user.id, {
+				name,
+				email,
+				phone,
+				avatar,
+				...(emailChanged ? { is_verified: 0 } : {}),
+			});
+		} catch (error: any) {
+			if (String(error?.code || "").startsWith("SQLITE_CONSTRAINT")) {
+				inertia.flash(response, "error", "Email tersebut sudah dipakai akun lain.");
+				return inertia.redirect(response, "/profile");
+			}
+			throw error;
+		}
+
+		const updatedUser = await UserRepository.findById(request.user.id);
+		if (!updatedUser) {
+			inertia.flash(response, "error", "Profil belum bisa diperbarui.");
+			return inertia.redirect(response, "/profile");
+		}
+
+		const session = SessionStore.get(request);
+		SessionStore.save(request, {
+			...session,
+			name: updatedUser.name || "",
+			email: updatedUser.email,
+			avatar: updatedUser.avatar || "",
+			email_verified: updatedUser.is_verified === 1,
 		});
 
-		inertia.flash(response, "success", "Profile updated successfully");
+		inertia.flash(response, "success", "Profil berhasil diperbarui.");
 		return inertia.redirect(response, "/profile");
 	},
 
-	/**
-	 * Delete multiple users (admin only)
-	 * DELETE /users
-	 */
 	async deleteUsers(request: Request, response: Response) {
 		if (!request.user) {
 			return response.status(401).json({ error: "Unauthorized" });
@@ -92,6 +144,9 @@ export const AppHandler = {
 		}
 
 		const { ids } = validationResult.data!;
+		for (const id of ids) {
+			SessionRepository.deleteByUserId(id);
+		}
 		await UserRepository.deleteMany(ids);
 
 		return inertia.redirect(response, "/home");
