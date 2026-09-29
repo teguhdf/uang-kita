@@ -1,4 +1,5 @@
 import UangKitaRepository, {
+	type DecisionRuleRow,
 	type MonthlyPlanRow,
 	type SavePlanData,
 } from "../repositories/uang-kita.repository";
@@ -23,6 +24,8 @@ export interface PurchaseImpact {
 	status: "within-flexible" | "uses-all-flexible" | "over-flexible";
 }
 
+export type DecisionLevel = "free" | "notify" | "discuss" | "unconfigured";
+
 export interface UangKitaInput extends SavePlanData {
 	partner_name: string;
 }
@@ -35,6 +38,7 @@ export interface DashboardOverview {
 	partnerName: string;
 	plan: MonthlyPlanRow | null;
 	metrics: MoneyMetrics | null;
+	decisionRule: DecisionRuleRow | null;
 }
 
 export function currentPeriod(date = new Date()): string {
@@ -106,10 +110,7 @@ export function simulatePurchaseImpact(
 	let status: PurchaseImpact["status"] = "within-flexible";
 	if (purchaseAmount > metrics.flexibleAmount) {
 		status = "over-flexible";
-	} else if (
-		purchaseAmount > 0 &&
-		purchaseAmount === metrics.flexibleAmount
-	) {
+	} else if (purchaseAmount > 0 && purchaseAmount === metrics.flexibleAmount) {
 		status = "uses-all-flexible";
 	}
 
@@ -125,6 +126,18 @@ export function simulatePurchaseImpact(
 	};
 }
 
+export function classifyDecisionRule(
+	amount: number,
+	rule: Pick<DecisionRuleRow, "free_limit" | "notify_limit"> | null | undefined,
+): DecisionLevel {
+	if (!rule) return "unconfigured";
+
+	const normalizedAmount = Math.max(0, Math.floor(Number(amount) || 0));
+	if (normalizedAmount <= rule.free_limit) return "free";
+	if (normalizedAmount <= rule.notify_limit) return "notify";
+	return "discuss";
+}
+
 export const UangKitaService = {
 	async getOverview(userId: string): Promise<DashboardOverview | null> {
 		const household = await UangKitaRepository.findHouseholdByUser(userId);
@@ -138,6 +151,7 @@ export const UangKitaService = {
 			household.id,
 			currentPeriod(),
 		);
+		const decisionRule = await UangKitaRepository.findDecisionRule(household.id);
 
 		return {
 			household: {
@@ -147,6 +161,7 @@ export const UangKitaService = {
 			partnerName: partner?.display_name || "Pasangan",
 			plan: plan || null,
 			metrics: plan ? calculateMoneyMetrics(plan) : null,
+			decisionRule: decisionRule || null,
 		};
 	},
 
@@ -171,16 +186,14 @@ export const UangKitaService = {
 			);
 		}
 
-		const {
-			partner_name: _partnerName,
-			...planInput
-		} = input;
+		const { partner_name: _partnerName, ...planInput } = input;
 
 		const plan = await UangKitaRepository.upsertPlan(
 			household.id,
 			currentPeriod(),
 			planInput,
 		);
+		const decisionRule = await UangKitaRepository.findDecisionRule(household.id);
 
 		return {
 			household: {
@@ -190,7 +203,24 @@ export const UangKitaService = {
 			partnerName: input.partner_name,
 			plan,
 			metrics: calculateMoneyMetrics(plan),
+			decisionRule: decisionRule || null,
 		};
+	},
+
+	async saveDecisionRule(
+		userId: string,
+		input: { free_limit: number; notify_limit: number },
+	): Promise<DecisionRuleRow> {
+		const household = await UangKitaRepository.findHouseholdByUser(userId);
+		if (!household) {
+			throw new Error("Household not found");
+		}
+
+		return UangKitaRepository.upsertDecisionRule(
+			household.id,
+			input.free_limit,
+			input.notify_limit,
+		);
 	},
 };
 
