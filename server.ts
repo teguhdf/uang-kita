@@ -1,5 +1,5 @@
-// Laju Server Entrypoint
-// Boots the HTTP server, wires middlewares & routes, and validates production configuration.
+// UANG KITA server entrypoint
+// Boots HTTP, validates production configuration, and wires security + routes.
 
 import "dotenv/config";
 
@@ -23,8 +23,8 @@ const option = {
 };
 
 if (process.env.HAS_CERTIFICATE === "true") {
-	option.key_file_name = path.join(process.cwd(), "localhost+1-key.pem");
-	option.cert_file_name = path.join(process.cwd(), "localhost+1.pem");
+	option.key_file_name = path.resolve(process.env.TLS_KEY_PATH || "");
+	option.cert_file_name = path.resolve(process.env.TLS_CERT_PATH || "");
 }
 
 const webserver = new HyperExpress.Server(option);
@@ -47,12 +47,12 @@ webserver.use(
 	}),
 );
 
-// CSRF is intentionally not enabled globally yet. Inertia requests need a tested
-// token injection path before this can be switched on without breaking forms.
-
+// State-changing product requests use JSON/Inertia plus a host-only SameSite session cookie.
+// Keep a future full CSRF-token rollout as a separate tested change instead of enabling
+// middleware globally without client token injection.
 webserver.use(Web);
 
-const PORT = parseInt(process.env.PORT || "") || 5555;
+const PORT = parseInt(process.env.PORT || "", 10) || 5555;
 
 webserver.set_error_handler(
 	(request: Request, response: Response, error: any) => {
