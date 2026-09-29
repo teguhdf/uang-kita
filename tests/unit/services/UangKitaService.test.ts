@@ -3,6 +3,7 @@ import {
 	buildCarryoverPlanSeed,
 	calculateMoneyMetrics,
 	classifyDecisionRule,
+	currentPeriod,
 	simulatePurchaseImpact,
 } from "../../../app/services/UangKitaService";
 
@@ -19,7 +20,7 @@ describe("UANG KITA Angka Aman engine", () => {
 				personal_partner: 250_000,
 				next_income_date: "2026-10-13",
 			},
-			new Date("2026-09-29T00:00:00"),
+			new Date("2026-09-29T00:00:00Z"),
 		);
 
 		expect(metrics.totalAllocated).toBe(4_000_000);
@@ -42,13 +43,18 @@ describe("UANG KITA Angka Aman engine", () => {
 				personal_partner: 0,
 				next_income_date: "2026-10-06",
 			},
-			new Date("2026-09-29T00:00:00"),
+			new Date("2026-09-29T00:00:00Z"),
 		);
 
 		expect(metrics.flexibleAmount).toBe(0);
 		expect(metrics.deficitAmount).toBe(500_000);
 		expect(metrics.safeDaily).toBe(0);
 		expect(metrics.safeWeekly).toBe(0);
+	});
+
+	it("uses Asia/Jakarta when resolving the active month", () => {
+		expect(currentPeriod(new Date("2026-09-30T16:30:00Z"))).toBe("2026-09");
+		expect(currentPeriod(new Date("2026-09-30T17:30:00Z"))).toBe("2026-10");
 	});
 
 	it("shows the remaining flexible money after a simulated purchase", () => {
