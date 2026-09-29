@@ -58,6 +58,12 @@ export interface DashboardOverview {
 	recentDecisions: PurchaseDecisionRow[];
 }
 
+export interface PendingPartnerInvite {
+	householdId: string;
+	partnerLabel: string;
+	inviteEmail: string;
+}
+
 function datePartsInTimeZone(date: Date, timeZone = APP_TIMEZONE) {
 	const parts = new Intl.DateTimeFormat("en-CA", {
 		timeZone,
@@ -187,6 +193,26 @@ export function classifyDecisionRule(
 	if (normalizedAmount <= rule.free_limit) return "free";
 	if (normalizedAmount <= rule.notify_limit) return "notify";
 	return "discuss";
+}
+
+async function validPendingInviteForUser(userId: string): Promise<PendingPartnerInvite | null> {
+	const account = await UserRepository.findById(userId);
+	if (!account) return null;
+
+	const existingHousehold = await UangKitaRepository.findHouseholdByUser(userId);
+	if (existingHousehold) return null;
+
+	const pending = await UangKitaRepository.findPendingPartnerInviteByEmail(account.email);
+	if (!pending || !pending.invite_email) return null;
+
+	// An invite can only target an account that already existed when the invite was created.
+	if (account.created_at > pending.updated_at) return null;
+
+	return {
+		householdId: pending.household_id,
+		partnerLabel: pending.display_name || account.name || "Pasangan",
+		inviteEmail: pending.invite_email,
+	};
 }
 
 export const UangKitaService = {
@@ -338,25 +364,34 @@ export const UangKitaService = {
 		const targetHousehold = await UangKitaRepository.findHouseholdByUser(targetUser.id);
 		if (targetHousehold) throw new Error("Partner already belongs to household");
 
-		// Store the pending link only. The target account completes it on its next login.
 		await UangKitaRepository.setPartnerInviteEmail(household.id, normalizedEmail);
 	},
 
-	async claimPartnerInvite(user: {
-		id: string;
-		email: string;
-		name?: string | null;
-	}): Promise<boolean> {
-		const account = await UserRepository.findById(user.id);
-		if (!account) return false;
+	async getPendingPartnerInvite(userId: string): Promise<PendingPartnerInvite | null> {
+		return validPendingInviteForUser(userId);
+	},
 
-		// The repository also verifies the account existed before this invitation,
-		// preventing an invitation from being claimed by registering the email later.
+	async acceptPartnerInvite(userId: string): Promise<boolean> {
+		const account = await UserRepository.findById(userId);
+		if (!account) return false;
+		const pending = await validPendingInviteForUser(userId);
+		if (!pending) return false;
+
 		return UangKitaRepository.claimPendingPartnerInvite(
-			user.id,
-			user.email,
-			user.name?.trim() || "Pasangan",
+			account.id,
+			account.email,
+			account.name?.trim() || pending.partnerLabel || "Pasangan",
 		);
+	},
+
+	async rejectPartnerInvite(userId: string): Promise<boolean> {
+		const account = await UserRepository.findById(userId);
+		if (!account) return false;
+		const pending = await validPendingInviteForUser(userId);
+		if (!pending) return false;
+
+		await UangKitaRepository.setPartnerInviteEmail(pending.householdId, "");
+		return true;
 	},
 };
 
