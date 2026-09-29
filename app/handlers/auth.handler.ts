@@ -1,13 +1,11 @@
 /**
  * Auth Handler
- * Handles authentication-related HTTP requests (login, register, logout, OAuth, password reset)
- *
- * Follows Handler → Service → Repository rule.
- * NO direct DB calls from handlers.
+ * Handles authentication-related HTTP requests.
  */
 
 import { UserRepository } from "../repositories/user.repository";
 import { PasswordResetRepository } from "../repositories/password-reset.repository";
+import { SessionStore } from "../session/store";
 import Authenticate from "../services/Authenticate";
 import UangKitaService from "../services/UangKitaService";
 import Validator from "../services/Validator";
@@ -22,7 +20,7 @@ import { MailTo } from "../services/Resend";
 import { redirectParamsURL } from "../services/GoogleAuth";
 import inertia from "../services/inertia";
 import type { Response, Request, User } from "../../type";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import dayjs from "dayjs";
 import axios from "axios";
 
@@ -34,57 +32,59 @@ async function claimPendingUangKitaInvite(user: User): Promise<void> {
 			name: user.name,
 		});
 	} catch (error) {
-		// Invitation claiming must never block a valid login/registration.
 		console.error("UANG KITA invite claim error:", error);
 	}
 }
 
+function googleOAuthEnabled(): boolean {
+	return (
+		process.env.ENABLE_GOOGLE_OAUTH === "true" &&
+		Boolean(process.env.GOOGLE_CLIENT_ID) &&
+		Boolean(process.env.GOOGLE_CLIENT_SECRET) &&
+		Boolean(process.env.GOOGLE_REDIRECT_URI)
+	);
+}
+
+function recoveryAvailable(): boolean {
+	return Boolean(process.env.RESEND_API_KEY || process.env.DRIPSENDER_API_KEY);
+}
+
 export const AuthHandler = {
-	/**
-	 * Display login page
-	 * GET /login
-	 */
 	async loginPage(request: Request, response: Response) {
-		if (request.cookies.auth_id) {
+		if (SessionStore.get(request).user_id) {
 			response.redirect("/home");
 			return;
 		}
 		return inertia.render(request, response, "auth/login");
 	},
 
-	/**
-	 * Process login form submission
-	 * POST /login
-	 */
 	async processLogin(request: Request, response: Response) {
 		try {
 			const body = await request.json();
-
 			const validationResult = Validator.validate(loginSchema, body);
 			if (!validationResult.success) {
 				const errors = validationResult.errors || {};
-				const firstError = Object.values(errors)[0]?.[0] || "Validation error";
+				const firstError = Object.values(errors)[0]?.[0] || "Data masuk belum valid";
 				inertia.flash(response, "error", firstError);
 				return inertia.redirect(response, "/login");
 			}
 
 			const { email, password, phone } = validationResult.data!;
-
 			let user: User | undefined;
 			if (email && email.includes("@")) {
-				user = await UserRepository.findByEmail(email.toLowerCase());
+				user = await UserRepository.findByEmail(email.trim().toLowerCase());
 			} else if (phone) {
-				user = await UserRepository.findByPhone(phone);
+				user = await UserRepository.findByPhone(phone.trim());
 			}
 
 			if (!user) {
-				inertia.flash(response, "error", "Email/Phone not registered");
+				inertia.flash(response, "error", "Email atau kata sandi tidak sesuai.");
 				return inertia.redirect(response, "/login");
 			}
 
 			const passwordMatch = await Authenticate.compare(password, user.password);
 			if (!passwordMatch) {
-				inertia.flash(response, "error", "Incorrect password");
+				inertia.flash(response, "error", "Email atau kata sandi tidak sesuai.");
 				return inertia.redirect(response, "/login");
 			}
 
@@ -92,261 +92,252 @@ export const AuthHandler = {
 			return Authenticate.process(user, request, response);
 		} catch (error) {
 			console.error("Login error:", error);
-			inertia.flash(
-				response,
-				"error",
-				"An error occurred during login. Please try again later.",
-			);
+			inertia.flash(response, "error", "Login belum berhasil. Coba lagi beberapa saat nanti.");
 			return inertia.redirect(response, "/login");
 		}
 	},
 
-	/**
-	 * Display registration page
-	 * GET /register
-	 */
 	async registerPage(request: Request, response: Response) {
-		if (request.cookies.auth_id) {
+		if (SessionStore.get(request).user_id) {
 			response.redirect("/home");
 			return;
 		}
 		return inertia.render(request, response, "auth/register");
 	},
 
-	/**
-	 * Process registration form submission
-	 * POST /register
-	 */
 	async processRegister(request: Request, response: Response) {
 		try {
 			const body = await request.json();
-
 			const validationResult = Validator.validate(registerSchema, body);
 			if (!validationResult.success) {
 				const errors = validationResult.errors || {};
-				const firstError = Object.values(errors)[0]?.[0] || "Validation error";
+				const firstError = Object.values(errors)[0]?.[0] || "Data pendaftaran belum valid";
 				inertia.flash(response, "error", firstError);
 				return inertia.redirect(response, "/register");
 			}
 
-			const { email, password, name } = validationResult.data!;
-
-			const existingUser = await UserRepository.emailExists(email);
+			const { password, name } = validationResult.data!;
+			const email = validationResult.data!.email.trim().toLowerCase();
+			const existingUser = await UserRepository.findByEmail(email);
 			if (existingUser) {
-				inertia.flash(
-					response,
-					"error",
-					"Email already registered. Please use another email or login.",
-				);
+				inertia.flash(response, "error", "Email sudah terdaftar. Silakan masuk.");
 				return inertia.redirect(response, "/register");
 			}
 
 			const user = await UserRepository.create({
 				id: randomUUID(),
-				email: email.toLowerCase(),
+				email,
 				password: await Authenticate.hash(password),
-				name,
+				name: name.trim(),
 			});
 
 			await claimPendingUangKitaInvite(user);
 			return Authenticate.process(user, request, response);
 		} catch (error: any) {
 			console.error("Registration error:", error);
-
-			if (error.code === "SQLITE_CONSTRAINT") {
-				inertia.flash(
-					response,
-					"error",
-					"Email already registered. Please use another email or login.",
-				);
+			if (String(error?.code || "").startsWith("SQLITE_CONSTRAINT")) {
+				inertia.flash(response, "error", "Email sudah terdaftar. Silakan masuk.");
 				return inertia.redirect(response, "/register");
 			}
-
-			inertia.flash(
-				response,
-				"error",
-				"An error occurred during registration. Please try again later.",
-			);
+			inertia.flash(response, "error", "Pendaftaran belum berhasil. Coba lagi beberapa saat nanti.");
 			return inertia.redirect(response, "/register");
 		}
 	},
 
-	/** Handle logout */
 	async logout(request: Request, response: Response) {
-		if (request.cookies.auth_id) {
-			await Authenticate.logout(request, response);
-		}
+		await Authenticate.logout(request, response);
 	},
 
-	/** Google OAuth redirect */
 	async googleRedirect(_request: Request, response: Response) {
+		if (!googleOAuthEnabled()) {
+			inertia.flash(response, "error", "Masuk dengan Google belum diaktifkan.");
+			return inertia.redirect(response, "/login");
+		}
 		const params = redirectParamsURL();
 		const googleLoginUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 		response.status(302).setHeader("Location", googleLoginUrl).send();
 	},
 
-	/** Google OAuth callback */
 	async googleCallback(request: Request, response: Response) {
-		const { code } = request.query;
-
-		const { data } = await axios({
-			url: `https://oauth2.googleapis.com/token`,
-			method: "post",
-			data: {
-				client_id: process.env.GOOGLE_CLIENT_ID,
-				client_secret: process.env.GOOGLE_CLIENT_SECRET,
-				redirect_uri: process.env.GOOGLE_REDIRECT_URI,
-				grant_type: "authorization_code",
-				code,
-			},
-		});
-
-		const result = await axios({
-			url: "https://www.googleapis.com/oauth2/v2/userinfo",
-			method: "get",
-			headers: {
-				Authorization: `Bearer ${data.access_token}`,
-			},
-		});
-
-		let { email, name, verified_email } = result.data;
-		email = email.toLowerCase();
-
-		let user = await UserRepository.findByEmail(email);
-
-		if (!user) {
-			const userData: import("../../app/repositories/user.repository").CreateUserData = {
-				id: randomUUID(),
-				email,
-				password: await Authenticate.hash(email),
-				name: name || null,
-				phone: null,
-				avatar: null,
-				is_verified: verified_email ? 1 : 0,
-				is_admin: 0,
-			};
-			user = await UserRepository.create(userData);
+		if (!googleOAuthEnabled()) {
+			inertia.flash(response, "error", "Masuk dengan Google belum diaktifkan.");
+			return inertia.redirect(response, "/login");
 		}
 
-		await claimPendingUangKitaInvite(user);
-		return Authenticate.process(user, request, response);
+		try {
+			const { code } = request.query;
+			if (!code || typeof code !== "string") throw new Error("Missing OAuth code");
+
+			const { data } = await axios({
+				url: "https://oauth2.googleapis.com/token",
+				method: "post",
+				data: {
+					client_id: process.env.GOOGLE_CLIENT_ID,
+					client_secret: process.env.GOOGLE_CLIENT_SECRET,
+					redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+					grant_type: "authorization_code",
+					code,
+				},
+				timeout: 10000,
+			});
+
+			const result = await axios({
+				url: "https://www.googleapis.com/oauth2/v2/userinfo",
+				method: "get",
+				headers: { Authorization: `Bearer ${data.access_token}` },
+				timeout: 10000,
+			});
+
+			let { email, name, verified_email } = result.data;
+			if (!email || !verified_email) throw new Error("Google email is not verified");
+			email = String(email).trim().toLowerCase();
+
+			let user = await UserRepository.findByEmail(email);
+			if (!user) {
+				user = await UserRepository.create({
+					id: randomUUID(),
+					email,
+					// Local password is random and unguessable for OAuth-created accounts.
+					password: await Authenticate.hash(randomBytes(32).toString("hex")),
+					name: name || null,
+					phone: null,
+					avatar: null,
+					is_verified: 1,
+					is_admin: 0,
+				});
+			}
+
+			await claimPendingUangKitaInvite(user);
+			return Authenticate.process(user, request, response);
+		} catch (error) {
+			console.error("Google OAuth error:", error);
+			inertia.flash(response, "error", "Masuk dengan Google belum berhasil.");
+			return inertia.redirect(response, "/login");
+		}
 	},
 
-	/** Display forgot password page */
 	async forgotPasswordPage(request: Request, response: Response) {
 		return inertia.render(request, response, "auth/forgot-password");
 	},
 
-	/** Send reset password link */
 	async sendResetPassword(request: Request, response: Response) {
+		if (!recoveryAvailable()) {
+			inertia.flash(response, "error", "Pemulihan kata sandi belum aktif. Hubungi pengelola UANG KITA.");
+			return inertia.redirect(response, "/forgot-password");
+		}
+
 		const body = await request.json();
-
 		const validationResult = Validator.validate(forgotPasswordSchema, body);
-
 		if (!validationResult.success) {
 			const errors = validationResult.errors || {};
-			const firstError = Object.values(errors)[0]?.[0] || "Validation error";
+			const firstError = Object.values(errors)[0]?.[0] || "Email belum valid";
 			inertia.flash(response, "error", firstError);
 			return inertia.redirect(response, "/forgot-password");
 		}
 
 		const { email, phone } = validationResult.data!;
-
 		let user: User | undefined;
-
 		if (email && email.includes("@")) {
-			user = await UserRepository.findByEmail(email);
+			user = await UserRepository.findByEmail(email.trim().toLowerCase());
 		} else if (phone) {
-			user = await UserRepository.findByPhone(phone);
+			user = await UserRepository.findByPhone(phone.trim());
 		}
 
+		// Do not reveal whether an account exists.
 		if (!user) {
-			inertia.flash(response, "error", "Email or phone not registered");
+			inertia.flash(response, "success", "Jika akun terdaftar, instruksi pemulihan akan dikirim.");
 			return inertia.redirect(response, "/forgot-password");
 		}
 
+		PasswordResetRepository.deleteByEmail(user.email);
 		const token = randomUUID();
+		PasswordResetRepository.create(user.email, token, dayjs().add(24, "hours").toISOString());
+		const resetUrl = `${process.env.APP_URL}/reset-password/${token}`;
+		let delivered = false;
 
-		PasswordResetRepository.create(
-			user.email,
-			token,
-			dayjs().add(24, "hours").toISOString(),
-		);
-
-		try {
-			await MailTo({
-				to: user.email,
-				subject: "Reset Password",
-				text: `You have requested a password reset. If this was you, please click the following link:\n\n${process.env.APP_URL}/reset-password/${token}\n\nIf you did not request a password reset, please ignore this email.\n\nThis link will expire in 24 hours.`,
-			});
-		} catch (error) {
-			console.error("Email send error:", error);
-		}
-
-		try {
-			if (user.phone)
-				await axios.post("https://api.dripsender.id/send", {
-					api_key: process.env.DRIPSENDER_API_KEY,
-					phone: user.phone,
-					text: `You have requested a password reset. If this was you, please click the following link:\n\n${process.env.APP_URL}/reset-password/${token}\n\nIf you did not request a password reset, please ignore this message.\n\nThis link will expire in 24 hours.`,
+		if (process.env.RESEND_API_KEY) {
+			try {
+				await MailTo({
+					to: user.email,
+					subject: "Pulihkan kata sandi UANG KITA",
+					text: `Gunakan tautan berikut untuk membuat kata sandi baru:\n\n${resetUrl}\n\nTautan ini berlaku 24 jam. Jika kamu tidak meminta reset, abaikan email ini.`,
 				});
-		} catch (error) {
-			console.error("SMS send error:", error);
+				delivered = true;
+			} catch (error) {
+				console.error("Email send error:", error);
+			}
 		}
 
-		inertia.flash(response, "success", "Password reset link has been sent");
+		if (process.env.DRIPSENDER_API_KEY && user.phone) {
+			try {
+				await axios.post(
+					"https://api.dripsender.id/send",
+					{
+						api_key: process.env.DRIPSENDER_API_KEY,
+						phone: user.phone,
+						text: `Pulihkan kata sandi UANG KITA: ${resetUrl}. Tautan berlaku 24 jam.`,
+					},
+					{ timeout: 10000 },
+				);
+				delivered = true;
+			} catch (error) {
+				console.error("SMS send error:", error);
+			}
+		}
+
+		if (!delivered) {
+			PasswordResetRepository.delete(token);
+			inertia.flash(response, "error", "Instruksi pemulihan belum bisa dikirim. Coba lagi nanti.");
+			return inertia.redirect(response, "/forgot-password");
+		}
+
+		inertia.flash(response, "success", "Jika akun terdaftar, instruksi pemulihan akan dikirim.");
 		return inertia.redirect(response, "/forgot-password");
 	},
 
-	/** Display reset password page */
 	async resetPasswordPage(request: Request, response: Response) {
 		const id = request.params.id;
 		const token = PasswordResetRepository.findByToken(id);
-
 		if (!token) {
-			return response.status(404).send("Link tidak valid atau sudah kadaluarsa");
+			inertia.flash(response, "error", "Tautan reset tidak valid atau sudah kedaluwarsa.");
+			return inertia.redirect(response, "/forgot-password");
 		}
-
-		return inertia.render(request, response, "auth/reset-password", {
-			id: request.params.id,
-		});
+		return inertia.render(request, response, "auth/reset-password", { id });
 	},
 
-	/** Process password reset */
 	async resetPassword(request: Request, response: Response) {
 		const body = await request.json();
 		const validationResult = Validator.validate(resetPasswordSchema, body);
+		const fallbackId = typeof body?.id === "string" ? body.id : "";
 
 		if (!validationResult.success) {
-			return response.status(422).json({
-				success: false,
-				message: "Validation failed",
-				errors: validationResult.errors,
-			});
+			const errors = validationResult.errors || {};
+			const firstError = Object.values(errors)[0]?.[0] || "Kata sandi baru belum valid";
+			inertia.flash(response, "error", firstError);
+			return inertia.redirect(response, fallbackId ? `/reset-password/${fallbackId}` : "/forgot-password");
 		}
 
 		const { id, password } = validationResult.data!;
 		const token = PasswordResetRepository.findByToken(id);
-
 		if (!token) {
-			return response.status(404).send("Link tidak valid atau sudah kadaluarsa");
+			inertia.flash(response, "error", "Tautan reset tidak valid atau sudah kedaluwarsa.");
+			return inertia.redirect(response, "/forgot-password");
 		}
 
 		const user = await UserRepository.findByEmail(token.email);
 		if (!user) {
-			return response.status(404).send("User tidak ditemukan");
+			PasswordResetRepository.delete(token.token);
+			inertia.flash(response, "error", "Akun tidak ditemukan.");
+			return inertia.redirect(response, "/login");
 		}
 
-		await UserRepository.updatePassword(
-			user.id,
-			await Authenticate.hash(password),
-		);
-		PasswordResetRepository.delete(token.token);
-
+		await UserRepository.updatePassword(user.id, await Authenticate.hash(password));
+		PasswordResetRepository.deleteByEmail(user.email);
+		SessionStore.destroyAllForUser(user.id);
+		inertia.flash(response, "success", "Kata sandi berhasil diperbarui.");
 		return Authenticate.process(user, request, response);
 	},
 
-	/** Change password */
 	async changePassword(request: Request, response: Response) {
 		if (!request.user) {
 			return response.status(401).json({ error: "Unauthorized" });
@@ -354,36 +345,30 @@ export const AuthHandler = {
 
 		const body = await request.json();
 		const validationResult = Validator.validate(changePasswordSchema, body);
-
 		if (!validationResult.success) {
-			return response.status(422).json({
-				success: false,
-				message: "Validation failed",
-				errors: validationResult.errors,
-			});
+			const errors = validationResult.errors || {};
+			const firstError = Object.values(errors)[0]?.[0] || "Kata sandi baru belum valid";
+			inertia.flash(response, "error", firstError);
+			return inertia.redirect(response, "/profile");
 		}
 
 		const validated = validationResult.data!;
 		const user = await UserRepository.findById(request.user.id);
-
 		if (!user) {
-			return response.status(404).json({ error: "User not found" });
+			SessionStore.destroy(request, response);
+			return SessionStore.redirect(response, "/login");
 		}
 
-		const passwordMatch = await Authenticate.compare(
-			validated.current_password,
-			user.password,
-		);
-
-		if (passwordMatch) {
-			await UserRepository.updatePassword(
-				user.id,
-				await Authenticate.hash(validated.new_password),
-			);
-			return response.json({ message: "Password berhasil diubah" });
+		const passwordMatch = await Authenticate.compare(validated.current_password, user.password);
+		if (!passwordMatch) {
+			inertia.flash(response, "error", "Kata sandi saat ini tidak cocok.");
+			return inertia.redirect(response, "/profile");
 		}
 
-		return response.status(400).json({ message: "Password lama tidak cocok" });
+		await UserRepository.updatePassword(user.id, await Authenticate.hash(validated.new_password));
+		SessionStore.destroyAllForUser(user.id);
+		inertia.flash(response, "success", "Kata sandi berhasil diubah. Sesi lain sudah dikeluarkan.");
+		return Authenticate.process(user, request, response, "/profile");
 	},
 };
 
