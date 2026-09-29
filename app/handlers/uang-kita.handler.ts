@@ -35,6 +35,22 @@ export const UangKitaHandler = {
 		inertia.flash(response, "success", "Kondisi bulan ini sudah tersimpan.");
 		return inertia.redirect(response, "/home");
 	},
+
+	async purchaseSimulatorPage(request: Request, response: Response) {
+		if (!request.user) {
+			return response.status(401).json({ error: "Unauthorized" });
+		}
+
+		const overview = await UangKitaService.getOverview(request.user.id);
+		if (!overview?.plan || !overview.metrics) {
+			inertia.flash(response, "error", "Susun kondisi bulan ini dulu sebelum mencoba simulasi pembelian.");
+			return inertia.redirect(response, "/onboarding");
+		}
+
+		return inertia.render(request, response, "purchase-simulator", {
+			overview,
+		});
+	},
 };
 
 export default UangKitaHandler;
