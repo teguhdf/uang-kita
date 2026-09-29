@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	buildCarryoverPlanSeed,
 	calculateMoneyMetrics,
 	classifyDecisionRule,
 	simulatePurchaseImpact,
@@ -90,6 +91,24 @@ describe("UANG KITA Angka Aman engine", () => {
 		expect(impact.safeWeeklyAfter).toBe(0);
 	});
 
+	it("adds a new purchase on top of an existing deficit", () => {
+		const impact = simulatePurchaseImpact(
+			{
+				totalAllocated: 3_000_000,
+				flexibleAmount: 0,
+				deficitAmount: 500_000,
+				daysRemaining: 10,
+				safeDaily: 0,
+				safeWeekly: 0,
+			},
+			200_000,
+		);
+
+		expect(impact.status).toBe("over-flexible");
+		expect(impact.flexibleAfter).toBe(0);
+		expect(impact.deficitAfter).toBe(700_000);
+	});
+
 	it("classifies purchase communication using the couple's own limits", () => {
 		const rule = {
 			free_limit: 100_000,
@@ -105,5 +124,37 @@ describe("UANG KITA Angka Aman engine", () => {
 
 	it("does not invent a decision rule when the couple has not configured one", () => {
 		expect(classifyDecisionRule(137_000, null)).toBe("unconfigured");
+	});
+
+	it("carries recurring structure without copying old available money or payday", () => {
+		const seed = buildCarryoverPlanSeed({
+			id: "plan-1",
+			household_id: "household-1",
+			period: "2026-09",
+			monthly_income: 12_000_000,
+			available_money: 8_000_000,
+			fixed_commitments: 4_000_000,
+			debt_payments: 500_000,
+			savings_target: 1_000_000,
+			safety_buffer: 500_000,
+			personal_owner: 500_000,
+			personal_partner: 500_000,
+			next_income_date: "2026-10-25",
+			created_at: 1,
+			updated_at: 1,
+		});
+
+		expect(seed).toEqual({
+			sourcePeriod: "2026-09",
+			monthly_income: 12_000_000,
+			fixed_commitments: 4_000_000,
+			debt_payments: 500_000,
+			savings_target: 1_000_000,
+			safety_buffer: 500_000,
+			personal_owner: 500_000,
+			personal_partner: 500_000,
+		});
+		expect(seed).not.toHaveProperty("available_money");
+		expect(seed).not.toHaveProperty("next_income_date");
 	});
 });
