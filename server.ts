@@ -10,6 +10,7 @@ import type { Response, Request } from "./type";
 import { logError, logInfo } from "./app/services/Logger";
 import { assertEnvironment } from "./app/services/Env";
 import { securityHeaders } from "./app/middlewares/security-headers.middleware";
+import { sameOriginGuard } from "./app/middlewares/origin-guard.middleware";
 
 const environment = assertEnvironment();
 for (const warning of environment.warnings) {
@@ -47,9 +48,10 @@ webserver.use(
 	}),
 );
 
-// State-changing product requests use JSON/Inertia plus a host-only SameSite session cookie.
-// Keep a future full CSRF-token rollout as a separate tested change instead of enabling
-// middleware globally without client token injection.
+// Laju's legacy CSRF service uses a process-global cached token and is not enabled here.
+// UANG KITA instead rejects cross-origin state-changing browser requests in production,
+// combined with a host-only Secure + HttpOnly + SameSite session cookie.
+webserver.use(sameOriginGuard);
 webserver.use(Web);
 
 const PORT = parseInt(process.env.PORT || "", 10) || 5555;
