@@ -75,6 +75,7 @@ Route.get("/api/s3/health", [apiRateLimit], S3Handler.health);
  * GET /storage/* - Serve local storage files
  */
 Route.get("/storage/*", StorageHandler.serveFile);
+
 /**
  * Authentication Routes
  * Routes for handling user authentication
@@ -120,6 +121,7 @@ Route.post("/reset-password", [authRateLimit], AuthHandler.resetPassword);
  * GET   /home - User dashboard
  * GET   /onboarding - Monthly money setup
  * POST  /onboarding - Save monthly money setup
+ * GET   /aman-kalau-dibeli - Purchase impact simulator
  * GET   /profile - User profile
  * POST  /change-profile - Update profile
  * POST  /change-password - Change password
@@ -128,6 +130,11 @@ Route.post("/reset-password", [authRateLimit], AuthHandler.resetPassword);
 Route.get("/home", [authRequired], AppHandler.homePage);
 Route.get("/onboarding", [authRequired], UangKitaHandler.onboardingPage);
 Route.post("/onboarding", [authRequired], UangKitaHandler.saveOnboarding);
+Route.get(
+	"/aman-kalau-dibeli",
+	[authRequired],
+	UangKitaHandler.purchaseSimulatorPage,
+);
 Route.get("/profile", [authRequired], AppHandler.profilePage);
 Route.post("/change-profile", [authRequired], AppHandler.changeProfile);
 Route.post("/change-password", [authRequired], AuthHandler.changePassword);
@@ -135,38 +142,11 @@ Route.delete("/users", [authRequired], AppHandler.deleteUsers);
 
 /**
  * Static Asset Handling Routes
- *
- * 1. Dist Assets (/assets/:file)
- * Serves compiled and bundled assets from the dist/assets directory
- * - Handles JavaScript files (*.js) with proper content type
- * - Handles CSS files (*.css) with proper content type
- * - Implements file caching for better performance
- * - Sets appropriate cache headers for browser caching
- * Example URLs:
- * - /assets/app.1234abc.js
- * - /assets/main.5678def.css
  */
 Route.get("/assets/:file", AssetHandler.distFolder);
 
 /**
- * 2. Public Assets (/*) - Catch-all Route
- * Serves static files from the public directory
- * - Must be the LAST route in the file
- * - Only serves files with allowed extensions
- * - Returns 404 for paths without extensions
- * - Implements security checks against unauthorized access
- *
- * Allowed file types:
- * - Images: .ico, .png, .jpeg, .jpg, .gif, .svg
- * - Documents: .txt, .pdf
- * - Fonts: .woff, .woff2, .ttf, .eot
- * - Media: .mp4, .webm, .mp3, .wav
- * - Web: .css, .js
- *
- * Example URLs:
- * - /images/logo.png
- * - /documents/terms.pdf
- * - /fonts/roboto.woff2
+ * Public Assets Catch-all Route
  */
 Route.get("/public/*", AssetHandler.publicFolder);
 
