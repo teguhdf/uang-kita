@@ -98,17 +98,15 @@
               <h2 class="text-base font-semibold text-[#1F1F1F]">Partner: {overview?.partnerName || 'Pasangan'}</h2>
               {#if partnerConnected}
                 <span class="rounded-full bg-[#EEF7F0] px-2.5 py-1 text-[10px] font-semibold text-[#4D8B5B]">Terhubung</span>
-              {:else if overview?.partnerInviteEmail}
-                <span class="rounded-full bg-[#FFF5E9] px-2.5 py-1 text-[10px] font-semibold text-[#A66B16]">Menunggu pasangan</span>
               {:else}
-                <span class="rounded-full bg-[#F3F1EF] px-2.5 py-1 text-[10px] font-semibold text-[#77716D]">Belum diundang</span>
+                <span class="rounded-full bg-[#F3F1EF] px-2.5 py-1 text-[10px] font-semibold text-[#77716D]">Belum terhubung</span>
               {/if}
             </div>
             <p class="mt-1.5 max-w-2xl text-xs leading-5 text-[#77716D]">
               {#if partnerConnected}
                 Akun pasangan sudah terhubung. Rencana, Angka Aman, dan aturan keputusan sekarang dibaca dari household yang sama.
               {:else}
-                Masukkan email yang akan dipakai pasangan untuk daftar atau login. Saat email yang sama dipakai, akun akan terhubung otomatis.
+                Minta pasangan membuat akun UANG KITA terlebih dulu. Setelah itu masukkan email akun pasangan di bawah untuk menghubungkannya ke ruang kalian.
               {/if}
             </p>
           </div>
@@ -118,20 +116,17 @@
       {#if !partnerConnected}
         <form class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]" onsubmit={(event) => { event.preventDefault(); submitInvite(); }}>
           <div>
-            <label for="partner_email" class="mb-2 block text-sm font-semibold text-[#3F3B38]">Email pasangan</label>
+            <label for="partner_email" class="mb-2 block text-sm font-semibold text-[#3F3B38]">Email akun pasangan</label>
             <div class="relative">
               <Mail class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#8C8782]" size={18} />
               <input id="partner_email" type="email" required bind:value={inviteForm.email} placeholder="pasangan@email.com" class="uk-input py-3.5 pl-12 pr-4 text-[15px] placeholder:text-[#A39D98]" />
             </div>
+            <p class="mt-2 text-[11px] leading-5 text-[#817C77]">Gunakan email yang sudah terdaftar sebagai akun UANG KITA milik pasangan.</p>
           </div>
           <button type="submit" disabled={inviteLoading || !inviteForm.email.trim()} class="self-end rounded-2xl bg-[#E1463D] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#C9362E] disabled:cursor-not-allowed disabled:opacity-50">
-            {#if inviteLoading}<span class="inline-flex items-center gap-2"><LoaderCircle class="animate-spin" size={17} /> Menyimpan...</span>{:else if overview?.partnerInviteEmail}Perbarui email{:else}Undang pasangan{/if}
+            {#if inviteLoading}<span class="inline-flex items-center gap-2"><LoaderCircle class="animate-spin" size={17} /> Menghubungkan...</span>{:else}Hubungkan pasangan{/if}
           </button>
         </form>
-
-        {#if overview?.partnerInviteEmail}
-          <p class="mt-3 text-[11px] leading-5 text-[#817C77]">Menunggu login atau pendaftaran dari <strong class="font-semibold text-[#1F1F1F]">{overview.partnerInviteEmail}</strong>.</p>
-        {/if}
       {/if}
     </section>
 
