@@ -28,6 +28,7 @@
 
   let isValid = $derived(Number(form.notify_limit || 0) >= Number(form.free_limit || 0))
   let partnerConnected = $derived(overview?.partnerStatus === 'active')
+  let partnerPending = $derived(!partnerConnected && Boolean(overview?.partnerInviteEmail))
 
   function rupiah(value) {
     return new Intl.NumberFormat('id-ID', {
@@ -98,6 +99,8 @@
               <h2 class="text-base font-semibold text-[#1F1F1F]">Partner: {overview?.partnerName || 'Pasangan'}</h2>
               {#if partnerConnected}
                 <span class="rounded-full bg-[#EEF7F0] px-2.5 py-1 text-[10px] font-semibold text-[#4D8B5B]">Terhubung</span>
+              {:else if partnerPending}
+                <span class="rounded-full bg-[#FFF5E9] px-2.5 py-1 text-[10px] font-semibold text-[#A66B16]">Menunggu login pasangan</span>
               {:else}
                 <span class="rounded-full bg-[#F3F1EF] px-2.5 py-1 text-[10px] font-semibold text-[#77716D]">Belum terhubung</span>
               {/if}
@@ -105,8 +108,10 @@
             <p class="mt-1.5 max-w-2xl text-xs leading-5 text-[#77716D]">
               {#if partnerConnected}
                 Akun pasangan sudah terhubung. Rencana, Angka Aman, dan aturan keputusan sekarang dibaca dari household yang sama.
+              {:else if partnerPending}
+                Undangan sudah diarahkan ke akun {overview.partnerInviteEmail}. Minta pasangan keluar lalu masuk kembali ke akun tersebut untuk menyelesaikan koneksi.
               {:else}
-                Minta pasangan membuat akun UANG KITA terlebih dulu. Setelah itu masukkan email akun pasangan di bawah untuk menghubungkannya ke ruang kalian.
+                Minta pasangan membuat akun UANG KITA terlebih dulu. Setelah itu masukkan email akun pasangan di bawah.
               {/if}
             </p>
           </div>
@@ -124,7 +129,7 @@
             <p class="mt-2 text-[11px] leading-5 text-[#817C77]">Gunakan email yang sudah terdaftar sebagai akun UANG KITA milik pasangan.</p>
           </div>
           <button type="submit" disabled={inviteLoading || !inviteForm.email.trim()} class="self-end rounded-2xl bg-[#E1463D] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#C9362E] disabled:cursor-not-allowed disabled:opacity-50">
-            {#if inviteLoading}<span class="inline-flex items-center gap-2"><LoaderCircle class="animate-spin" size={17} /> Menghubungkan...</span>{:else}Hubungkan pasangan{/if}
+            {#if inviteLoading}<span class="inline-flex items-center gap-2"><LoaderCircle class="animate-spin" size={17} /> Menyimpan...</span>{:else if partnerPending}Perbarui akun{:else}Hubungkan pasangan{/if}
           </button>
         </form>
       {/if}
