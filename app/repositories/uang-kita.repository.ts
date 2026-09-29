@@ -16,6 +16,7 @@ export interface HouseholdMemberRow {
 	display_name: string;
 	role: "owner" | "partner";
 	status: "active" | "pending";
+	invite_email: string | null;
 	created_at: number;
 	updated_at: number;
 }
@@ -158,6 +159,55 @@ export const UangKitaRepository = {
 				[partnerName, now, householdId],
 			);
 		});
+	},
+
+	async setPartnerInviteEmail(
+		householdId: string,
+		email: string,
+	): Promise<HouseholdMemberRow> {
+		const normalizedEmail = email.trim().toLowerCase();
+		const now = Date.now();
+		DB.run(
+			`UPDATE household_members
+       SET invite_email = ?, status = CASE WHEN user_id IS NULL THEN 'pending' ELSE status END, updated_at = ?
+       WHERE household_id = ? AND role = 'partner'`,
+			[normalizedEmail, now, householdId],
+		);
+
+		const partner = await this.findMemberByRole(householdId, "partner");
+		if (!partner) throw new Error("Partner member not found");
+		return partner;
+	},
+
+	async claimPendingPartnerInvite(
+		userId: string,
+		email: string,
+		displayName: string,
+	): Promise<boolean> {
+		const normalizedEmail = email.trim().toLowerCase();
+		const existingMembership = DB.get<{ household_id: string }>(
+			"SELECT household_id FROM household_members WHERE user_id = ? LIMIT 1",
+			[userId],
+		);
+		if (existingMembership) return false;
+
+		const pending = DB.get<HouseholdMemberRow>(
+			`SELECT * FROM household_members
+       WHERE role = 'partner' AND status = 'pending' AND LOWER(invite_email) = LOWER(?)
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+			[normalizedEmail],
+		);
+		if (!pending) return false;
+
+		const result = DB.run(
+			`UPDATE household_members
+       SET user_id = ?, display_name = ?, status = 'active', updated_at = ?
+       WHERE id = ? AND user_id IS NULL AND status = 'pending'`,
+			[userId, displayName || pending.display_name, Date.now(), pending.id],
+		);
+
+		return result.changes > 0;
 	},
 
 	async upsertPlan(
