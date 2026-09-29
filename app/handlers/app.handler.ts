@@ -5,6 +5,7 @@
 
 import { UserRepository } from "../repositories/user.repository";
 import Validator from "../services/Validator";
+import UangKitaService from "../services/UangKitaService";
 import {
 	updateProfileSchema,
 	deleteUsersSchema,
@@ -18,7 +19,12 @@ export const AppHandler = {
 	 * GET /home
 	 */
 	async homePage(request: Request, response: Response) {
-		return inertia.render(request, response, "home");
+		if (!request.user) {
+			return response.status(401).json({ error: "Unauthorized" });
+		}
+
+		const overview = await UangKitaService.getOverview(request.user.id);
+		return inertia.render(request, response, "home", { overview });
 	},
 
 	/**
