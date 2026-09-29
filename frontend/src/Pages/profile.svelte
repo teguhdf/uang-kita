@@ -311,7 +311,7 @@
                 <p class="text-sm font-semibold text-[#1F1F1F]">Keluar dari akun</p>
                 <p class="mt-1 text-xs leading-5 text-[#817C77]">Data tidak dihapus. Kamu bisa masuk lagi kapan saja.</p>
             </div>
-            <button type="button" on:click={logout} class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-[#A33D36] transition hover:bg-[#FFF1EF] sm:mt-0 sm:w-auto">
+            <button type="button" onclick={logout} class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-[#A33D36] transition hover:bg-[#FFF1EF] sm:mt-0 sm:w-auto">
                 <LogOut size={17} /> Keluar
             </button>
         </section>
