@@ -1,0 +1,41 @@
+name: UANG KITA CI
+
+on:
+  push:
+    branches:
+      - main
+      - feat/uang-kita-foundation
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uang-kita-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run unit and integration tests
+        run: npm run test:run
+
+      - name: Build production bundle
+        run: npm run build
