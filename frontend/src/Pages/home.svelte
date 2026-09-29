@@ -3,13 +3,14 @@
     import {
         ArrowRight,
         CalendarDays,
-        CircleAlert,
         CircleCheck,
         CircleDollarSign,
-        HeartHandshake,
         Landmark,
+        Layers3,
+        Leaf,
+        MessageCircle,
         PencilLine,
-        ShieldCheck,
+        UsersRound,
         WalletCards,
     } from "lucide-svelte";
     import AppShell from "../Components/UangKita/AppShell.svelte";
@@ -34,233 +35,181 @@
             year: "numeric",
         }).format(new Date(`${value}T00:00:00`));
     }
+
+    function percent(value, total) {
+        const base = Number(total || 0);
+        if (base <= 0) return 0;
+        return Math.max(0, Math.min(100, Math.round((Number(value || 0) / base) * 100)));
+    }
 </script>
 
 <svelte:head>
     <title>UANG KITA · Sedalam Ini.</title>
-    <meta
-        name="description"
-        content="Ruang pasangan untuk melihat kondisi uang bersama, mengetahui batas aman, dan membuat keputusan dengan lebih jernih."
-    />
+    <meta name="description" content="Lihat kondisi uang bersama, Angka Aman, dan keputusan yang perlu dibicarakan berdua." />
 </svelte:head>
 
 <AppShell active="home">
-    <section class="mb-7 sm:mb-9">
-        <p class="text-xs font-medium text-[#8E837B]">Halo, {firstName}.</p>
-        <div class="mt-2 max-w-2xl">
-            <h1 class="text-[30px] font-semibold leading-[1.12] tracking-[-0.045em] text-[#25211F] sm:text-4xl">
-                Uang kalian belum harus sempurna. Yang penting, mulai terlihat jelas.
+    <section class="mb-6 overflow-hidden rounded-[26px] border border-[#F0ECE8] bg-[#FAFAF8] px-5 py-6 sm:px-7 sm:py-7">
+        <div class="max-w-2xl">
+            <p class="text-xs font-semibold text-[#E1463D]">Assalamu’alaikum, {firstName}.</p>
+            <h1 class="mt-2 text-[30px] font-semibold leading-[1.08] tracking-[-0.045em] text-[#1F1F1F] sm:text-[38px]">
+                Tenang mengelola uang,<br class="hidden sm:block" /> lebih dekat dalam tujuan hidup.
             </h1>
-            <p class="mt-3 max-w-xl text-sm leading-6 text-[#756D66] sm:text-[15px]">
-                Lihat apa yang sudah punya tujuan, apa yang masih fleksibel, dan berapa yang aman digunakan sampai pemasukan berikutnya.
+            <p class="mt-3 max-w-xl text-sm leading-6 text-[#65605C] sm:text-[15px]">
+                UANG KITA membantu kalian melihat kondisi bulan ini dengan lebih jelas, lalu mengambil keputusan sesuai kesepakatan bersama.
             </p>
         </div>
     </section>
 
     {#if flash?.success}
-        <div class="mb-5 flex items-start gap-3 rounded-2xl border border-[#D8E2D4] bg-[#F4F8F1] p-4 text-[#53664E]">
+        <div class="mb-5 flex items-start gap-3 rounded-2xl border border-[#DDE8D9] bg-[#F4F8F2] p-4 text-[#486043]">
             <CircleCheck class="mt-0.5 shrink-0" size={18} strokeWidth={1.8} />
             <p class="text-sm leading-5">{flash.success}</p>
         </div>
     {/if}
 
     {#if !overview || !overview.plan || !overview.metrics}
-        <section class="overflow-hidden rounded-[28px] border border-[#E5D9CF] bg-[#FFFDFC] shadow-[0_16px_50px_rgba(76,55,43,0.06)]">
-            <div class="p-5 sm:p-7">
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <div class="inline-flex items-center gap-2 rounded-full bg-[#F2E7DF] px-3 py-1.5 text-[11px] font-semibold text-[#7B4038]">
-                            <CircleDollarSign size={14} strokeWidth={2} />
-                            Angka Aman
-                        </div>
-                        <h2 class="mt-5 text-xl font-semibold tracking-[-0.03em] text-[#2B2724] sm:text-2xl">
-                            Belum dihitung
-                        </h2>
-                        <p class="mt-2 max-w-md text-sm leading-6 text-[#7C736C]">
-                            Susun kondisi uang bulan ini sekali saja. Setelah itu UANG KITA akan menunjukkan berapa yang masih fleksibel dan batas aman sampai pemasukan berikutnya.
-                        </p>
+        <section class="uk-card p-5 sm:p-7">
+            <div class="flex items-start justify-between gap-5">
+                <div class="max-w-xl">
+                    <div class="inline-flex items-center gap-2 rounded-full bg-[#FFF1EF] px-3 py-1.5 text-xs font-semibold text-[#C9362E]">
+                        <CircleDollarSign size={15} /> Angka Aman
                     </div>
-
-                    <div class="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F4EEE8] text-[#8F655D] sm:flex">
-                        <ShieldCheck size={22} strokeWidth={1.7} />
-                    </div>
-                </div>
-
-                <div class="mt-6 rounded-2xl border border-dashed border-[#DCCFC4] bg-[#FAF7F3] p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
-                    <div>
-                        <p class="text-sm font-semibold text-[#3A3430]">Mulai dari periode sekarang.</p>
-                        <p class="mt-1 text-xs leading-5 text-[#8A8078]">Nggak perlu menghubungkan rekening atau mencatat setiap transaksi.</p>
-                    </div>
-
-                    <a href="/onboarding" use:inertia class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#7B4038] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#69362F] sm:mt-0 sm:w-auto">
-                        Susun bulan ini
-                        <ArrowRight size={17} />
-                    </a>
+                    <h2 class="mt-5 text-2xl font-semibold tracking-[-0.035em] text-[#1F1F1F]">Belum dihitung.</h2>
+                    <p class="mt-2 text-sm leading-6 text-[#6E6965]">
+                        Susun kondisi bulan ini sekali. Setelah itu kalian bisa melihat uang tersedia, alokasi, sisa fleksibel, dan batas aman hingga pemasukan berikutnya.
+                    </p>
                 </div>
             </div>
-        </section>
-
-        <section class="mt-5 grid gap-3 sm:grid-cols-3">
-            <article class="rounded-[22px] border border-[#E8DED6] bg-[#FBF8F4] p-5">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEE3DB] text-[#85544B]">
-                    <Landmark size={18} strokeWidth={1.8} />
-                </div>
-                <p class="mt-5 text-xs font-medium text-[#8B8178]">Uang Kita</p>
-                <p class="mt-1 text-lg font-semibold tracking-[-0.02em] text-[#37312D]">Belum diatur</p>
-                <p class="mt-1 text-xs leading-5 text-[#948980]">Ruang fleksibel setelah kebutuhan, target, dan uang personal dipisahkan.</p>
-            </article>
-
-            <article class="rounded-[22px] border border-[#E8DED6] bg-[#FBF8F4] p-5">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEE3DB] text-[#85544B]">
-                    <WalletCards size={18} strokeWidth={1.8} />
-                </div>
-                <p class="mt-5 text-xs font-medium text-[#8B8178]">Uang Kamu</p>
-                <p class="mt-1 text-lg font-semibold tracking-[-0.02em] text-[#37312D]">Belum diatur</p>
-                <p class="mt-1 text-xs leading-5 text-[#948980]">Ruang personal yang tidak perlu dinegosiasikan setiap kali dipakai.</p>
-            </article>
-
-            <article class="rounded-[22px] border border-[#E8DED6] bg-[#FBF8F4] p-5">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEE3DB] text-[#85544B]">
-                    <HeartHandshake size={18} strokeWidth={1.8} />
-                </div>
-                <p class="mt-5 text-xs font-medium text-[#8B8178]">Uang Pasangan</p>
-                <p class="mt-1 text-lg font-semibold tracking-[-0.02em] text-[#37312D]">Belum diatur</p>
-                <p class="mt-1 text-xs leading-5 text-[#948980]">Ruang personal pasangan dengan nilai yang kalian sepakati.</p>
-            </article>
+            <a href="/onboarding" use:inertia class="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[#E1463D] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#C9362E]">
+                Susun bulan ini <ArrowRight size={17} />
+            </a>
         </section>
     {:else}
         {@const plan = overview.plan}
         {@const metrics = overview.metrics}
+        {@const allocatedPct = percent(metrics.totalAllocated, plan.available_money)}
+        {@const flexiblePct = percent(metrics.flexibleAmount, plan.available_money)}
 
-        <section class="overflow-hidden rounded-[28px] border border-[#E1D4C9] bg-[#342E2A] text-[#F8F3EE] shadow-[0_18px_60px_rgba(52,46,42,0.12)]">
-            <div class="p-5 sm:p-7">
-                <div class="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                        <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-[#E2C8BC]">
-                            <CircleDollarSign size={14} strokeWidth={2} />
-                            Angka Aman
-                        </div>
-
-                        {#if metrics.deficitAmount > 0}
-                            <p class="mt-5 text-sm text-[#E7B7AE]">Alokasi bulan ini melewati uang yang tersedia.</p>
-                            <h2 class="mt-1 text-[34px] font-semibold tracking-[-0.045em] text-white sm:text-[42px]">
-                                -{rupiah(metrics.deficitAmount)}
-                            </h2>
-                            <p class="mt-3 max-w-lg text-sm leading-6 text-[#D8CEC7]">Kurangi salah satu alokasi di menu Rencana sebelum memakai angka ini untuk keputusan.</p>
-                        {:else}
-                            <p class="mt-5 text-xs text-[#CFC2BA]">Aman digunakan per minggu</p>
-                            <h2 class="mt-1 text-[34px] font-semibold tracking-[-0.045em] text-white sm:text-[42px]">
-                                {rupiah(metrics.safeWeekly)}
-                            </h2>
-                            <p class="mt-2 text-sm leading-6 text-[#D8CEC7]">Sekitar {rupiah(metrics.safeDaily)} per hari selama {metrics.daysRemaining} hari menuju pemasukan berikutnya.</p>
-                        {/if}
+        <section class="grid gap-4 lg:grid-cols-[1.05fr_1.95fr]">
+            <article class="rounded-[26px] bg-[#1F1F1F] p-5 text-white shadow-[0_16px_48px_rgba(31,31,31,0.12)] sm:p-6">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
+                        <CircleDollarSign size={15} /> Angka Aman
                     </div>
-
-                    <a href="/onboarding" use:inertia class="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-xs font-semibold text-[#F7EFE9] transition hover:bg-white/10">
-                        <PencilLine size={15} strokeWidth={1.8} />
-                        Atur ulang
-                    </a>
+                    <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-[#DDD8D4]">Mingguan</span>
                 </div>
 
-                <div class="mt-6 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-3">
-                    <div>
-                        <p class="text-[10px] uppercase tracking-[0.15em] text-[#BFB2AA]">Uang tersedia</p>
-                        <p class="mt-1 text-sm font-semibold text-white">{rupiah(plan.available_money)}</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] uppercase tracking-[0.15em] text-[#BFB2AA]">Sudah dialokasikan</p>
-                        <p class="mt-1 text-sm font-semibold text-white">{rupiah(metrics.totalAllocated)}</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] uppercase tracking-[0.15em] text-[#BFB2AA]">Masih fleksibel</p>
-                        <p class="mt-1 text-sm font-semibold text-white">{rupiah(metrics.flexibleAmount)}</p>
-                    </div>
-                </div>
+                {#if metrics.deficitAmount > 0}
+                    <p class="mt-6 text-xs font-medium text-[#F3B2AC]">Alokasi melebihi uang tersedia</p>
+                    <p class="mt-1 text-[34px] font-semibold tracking-[-0.045em]">-{rupiah(metrics.deficitAmount)}</p>
+                    <p class="mt-3 text-sm leading-6 text-[#D7D2CE]">Atur ulang rencana sebelum memakai angka ini untuk keputusan.</p>
+                {:else}
+                    <p class="mt-6 text-[34px] font-semibold tracking-[-0.045em] sm:text-[40px]">{rupiah(metrics.safeWeekly)}</p>
+                    <p class="mt-2 text-sm leading-6 text-[#D8D4D1]">
+                        Sekitar <strong class="font-semibold text-white">{rupiah(metrics.safeDaily)}</strong> per hari selama {metrics.daysRemaining} hari menuju pemasukan berikutnya.
+                    </p>
+                {/if}
+
+                <a href="/onboarding" use:inertia class="mt-6 inline-flex items-center gap-2 text-xs font-semibold text-white/90 transition hover:text-white">
+                    <PencilLine size={15} /> Atur rencana
+                </a>
+            </article>
+
+            <div class="grid gap-3 sm:grid-cols-3">
+                <article class="uk-card p-5">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF7F0] text-[#4D8B5B]"><WalletCards size={19} /></div>
+                    <p class="mt-5 text-xs font-semibold text-[#6D6964]">Uang Tersedia</p>
+                    <p class="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#1F1F1F]">{rupiah(plan.available_money)}</p>
+                    <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-[#EEF0EC]"><div class="h-full w-full rounded-full bg-[#69B97B]"></div></div>
+                    <p class="mt-2 text-[11px] text-[#8A8580]">Dana yang siap digunakan sekarang.</p>
+                </article>
+
+                <article class="uk-card p-5">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FFF0EF] text-[#E1463D]"><Layers3 size={19} /></div>
+                    <p class="mt-5 text-xs font-semibold text-[#6D6964]">Sudah Dialokasikan</p>
+                    <p class="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#1F1F1F]">{rupiah(metrics.totalAllocated)}</p>
+                    <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-[#F3EFED]"><div class="h-full rounded-full bg-[#E1463D]" style={`width:${allocatedPct}%`}></div></div>
+                    <p class="mt-2 text-[11px] text-[#8A8580]">{allocatedPct}% dari uang tersedia.</p>
+                </article>
+
+                <article class="uk-card p-5">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FFF7EA] text-[#C88B2A]"><Leaf size={19} /></div>
+                    <p class="mt-5 text-xs font-semibold text-[#6D6964]">Masih Fleksibel</p>
+                    <p class="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#1F1F1F]">{rupiah(metrics.flexibleAmount)}</p>
+                    <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-[#F4F0E8]"><div class="h-full rounded-full bg-[#E9B657]" style={`width:${flexiblePct}%`}></div></div>
+                    <p class="mt-2 text-[11px] text-[#8A8580]">{flexiblePct}% masih punya ruang.</p>
+                </article>
             </div>
         </section>
 
-        <section class="mt-5 grid gap-3 sm:grid-cols-3">
-            <article class="rounded-[22px] border border-[#E8DED6] bg-[#FFFDFC] p-5">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEE3DB] text-[#85544B]">
-                    <Landmark size={18} strokeWidth={1.8} />
-                </div>
-                <p class="mt-5 text-xs font-medium text-[#8B8178]">Uang Kita</p>
-                <p class="mt-1 text-xl font-semibold tracking-[-0.025em] text-[#37312D]">{rupiah(metrics.flexibleAmount)}</p>
-                <p class="mt-1 text-xs leading-5 text-[#948980]">Ruang fleksibel bersama sampai pemasukan berikutnya.</p>
-            </article>
+        <section class="mt-7">
+            <div class="mb-3">
+                <h2 class="text-lg font-semibold tracking-[-0.025em] text-[#1F1F1F]">Menu utama</h2>
+                <p class="mt-1 text-sm text-[#77716D]">Pilih hal yang ingin kalian kelola.</p>
+            </div>
 
-            <article class="rounded-[22px] border border-[#E8DED6] bg-[#FFFDFC] p-5">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEE3DB] text-[#85544B]">
-                    <WalletCards size={18} strokeWidth={1.8} />
-                </div>
-                <p class="mt-5 text-xs font-medium text-[#8B8178]">Uang Kamu</p>
-                <p class="mt-1 text-xl font-semibold tracking-[-0.025em] text-[#37312D]">{rupiah(plan.personal_owner)}</p>
-                <p class="mt-1 text-xs leading-5 text-[#948980]">Ruang personal yang sudah dipisahkan dari Angka Aman.</p>
-            </article>
+            <div class="grid gap-3 md:grid-cols-3">
+                <a href="/onboarding" use:inertia class="group uk-card flex items-start gap-4 p-5 transition hover:-translate-y-0.5 hover:border-[#E3DDD8] hover:shadow-[0_14px_40px_rgba(31,31,31,0.07)]">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF1EF] text-[#E1463D]"><CalendarDays size={20} /></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-base font-semibold text-[#1F1F1F]">Rencana</span>
+                        <span class="mt-1 block text-xs leading-5 text-[#77716D]">Atur pemasukan, pengeluaran, dan alokasi bulan ini.</span>
+                    </span>
+                    <ArrowRight class="mt-1 text-[#A39D98] transition group-hover:translate-x-0.5 group-hover:text-[#E1463D]" size={17} />
+                </a>
 
-            <article class="rounded-[22px] border border-[#E8DED6] bg-[#FFFDFC] p-5">
-                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEE3DB] text-[#85544B]">
-                    <HeartHandshake size={18} strokeWidth={1.8} />
-                </div>
-                <p class="mt-5 text-xs font-medium text-[#8B8178]">Uang {overview.partnerName}</p>
-                <p class="mt-1 text-xl font-semibold tracking-[-0.025em] text-[#37312D]">{rupiah(plan.personal_partner)}</p>
-                <p class="mt-1 text-xs leading-5 text-[#948980]">Ruang personal pasangan yang kalian sepakati.</p>
-            </article>
+                <a href="/aman-kalau-dibeli" use:inertia class="group uk-card flex items-start gap-4 p-5 transition hover:-translate-y-0.5 hover:border-[#E3DDD8] hover:shadow-[0_14px_40px_rgba(31,31,31,0.07)]">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF1EF] text-[#E1463D]"><MessageCircle size={20} /></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-base font-semibold text-[#1F1F1F]">Keputusan</span>
+                        <span class="mt-1 block text-xs leading-5 text-[#77716D]">Cek aman atau tidak kalau mau beli sesuatu.</span>
+                    </span>
+                    <ArrowRight class="mt-1 text-[#A39D98] transition group-hover:translate-x-0.5 group-hover:text-[#E1463D]" size={17} />
+                </a>
+
+                <a href="/aturan-keputusan" use:inertia class="group uk-card flex items-start gap-4 p-5 transition hover:-translate-y-0.5 hover:border-[#E3DDD8] hover:shadow-[0_14px_40px_rgba(31,31,31,0.07)]">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF1EF] text-[#E1463D]"><UsersRound size={20} /></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-base font-semibold text-[#1F1F1F]">Kita</span>
+                        <span class="mt-1 block text-xs leading-5 text-[#77716D]">Atur kesepakatan dan hubungkan akun pasangan.</span>
+                    </span>
+                    <ArrowRight class="mt-1 text-[#A39D98] transition group-hover:translate-x-0.5 group-hover:text-[#E1463D]" size={17} />
+                </a>
+            </div>
         </section>
 
-        <section class="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <article class="rounded-[26px] border border-[#E4DAD1] bg-white p-5 sm:p-6">
+        <section class="mt-7 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <article class="uk-card p-5 sm:p-6">
                 <div class="flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9A665D]">Kondisi bulan ini</p>
-                        <h2 class="mt-1 text-base font-semibold tracking-[-0.02em] text-[#312C29]">Yang sudah punya tujuan</h2>
+                        <p class="text-xs font-semibold text-[#E1463D]">Rencana bulan ini</p>
+                        <h3 class="mt-1 text-base font-semibold text-[#1F1F1F]">Yang sudah punya tujuan</h3>
                     </div>
-                    <div class="flex items-center gap-1.5 text-xs text-[#8B8179]">
-                        <CalendarDays size={15} strokeWidth={1.8} />
-                        {formatDate(plan.next_income_date)}
-                    </div>
+                    <div class="flex items-center gap-1.5 text-xs text-[#77716D]"><CalendarDays size={15} /> {formatDate(plan.next_income_date)}</div>
                 </div>
-
-                <div class="mt-5 divide-y divide-[#EEE6DF] text-sm">
-                    <div class="flex items-center justify-between gap-4 py-3">
-                        <span class="text-[#776E67]">Kebutuhan & tagihan wajib</span>
-                        <span class="font-medium text-[#37312D]">{rupiah(plan.fixed_commitments)}</span>
-                    </div>
-                    <div class="flex items-center justify-between gap-4 py-3">
-                        <span class="text-[#776E67]">Cicilan / utang</span>
-                        <span class="font-medium text-[#37312D]">{rupiah(plan.debt_payments)}</span>
-                    </div>
-                    <div class="flex items-center justify-between gap-4 py-3">
-                        <span class="text-[#776E67]">Target tabungan bersama</span>
-                        <span class="font-medium text-[#37312D]">{rupiah(plan.savings_target)}</span>
-                    </div>
-                    <div class="flex items-center justify-between gap-4 py-3">
-                        <span class="text-[#776E67]">Safety buffer</span>
-                        <span class="font-medium text-[#37312D]">{rupiah(plan.safety_buffer)}</span>
-                    </div>
+                <div class="mt-5 divide-y divide-[#F0ECE8] text-sm">
+                    <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Kebutuhan & tagihan wajib</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(plan.fixed_commitments)}</strong></div>
+                    <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Cicilan / utang</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(plan.debt_payments)}</strong></div>
+                    <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Target tabungan bersama</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(plan.savings_target)}</strong></div>
+                    <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Safety buffer</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(plan.safety_buffer)}</strong></div>
                 </div>
             </article>
 
-            <aside class="rounded-[26px] border border-[#E4DAD1] bg-[#FBF8F4] p-5 sm:p-6">
-                {#if metrics.deficitAmount > 0}
-                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#F6E2DE] text-[#8A463E]">
-                        <CircleAlert size={19} strokeWidth={1.8} />
+            <article class="uk-card p-5 sm:p-6">
+                <p class="text-xs font-semibold text-[#E1463D]">Ruang personal</p>
+                <h3 class="mt-1 text-base font-semibold text-[#1F1F1F]">Tetap punya ruang masing-masing.</h3>
+                <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    <div class="rounded-2xl bg-[#FAFAF8] p-4">
+                        <p class="text-xs text-[#77716D]">Uang Kamu</p>
+                        <p class="mt-1 text-lg font-semibold text-[#1F1F1F]">{rupiah(plan.personal_owner)}</p>
                     </div>
-                    <p class="mt-4 text-base font-semibold tracking-[-0.02em] text-[#3A332F]">Ada yang perlu disesuaikan</p>
-                    <p class="mt-2 text-sm leading-6 text-[#7D746D]">Jumlah yang kalian alokasikan lebih besar daripada uang yang tersedia. Ubah Rencana sebelum menjadikan Angka Aman sebagai batas keputusan.</p>
-                {:else}
-                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E8EFE3] text-[#5E7458]">
-                        <ShieldCheck size={19} strokeWidth={1.8} />
+                    <div class="rounded-2xl bg-[#FAFAF8] p-4">
+                        <p class="text-xs text-[#77716D]">Uang {overview.partnerName}</p>
+                        <p class="mt-1 text-lg font-semibold text-[#1F1F1F]">{rupiah(plan.personal_partner)}</p>
                     </div>
-                    <p class="mt-4 text-base font-semibold tracking-[-0.02em] text-[#3A332F]">Batas sudah terlihat</p>
-                    <p class="mt-2 text-sm leading-6 text-[#7D746D]">Saldo bukan lagi satu-satunya patokan. Kalian sekarang punya angka yang sudah memperhitungkan komitmen, buffer, dan ruang personal.</p>
-                {/if}
-
-                <a href="/onboarding" use:inertia class="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#7B4038] transition hover:text-[#5E302A]">
-                    Lihat Rencana
-                    <ArrowRight size={16} />
-                </a>
-            </aside>
+                </div>
+            </article>
         </section>
     {/if}
 </AppShell>
