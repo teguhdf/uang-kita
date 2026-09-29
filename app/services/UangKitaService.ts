@@ -4,6 +4,7 @@ import UangKitaRepository, {
 	type PurchaseDecisionRow,
 	type SavePlanData,
 } from "../repositories/uang-kita.repository";
+import { UserRepository } from "../repositories/user.repository";
 
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Jakarta";
 
@@ -322,12 +323,28 @@ export const UangKitaService = {
 	async invitePartner(userId: string, email: string): Promise<void> {
 		const household = await UangKitaRepository.findHouseholdByUser(userId);
 		if (!household) throw new Error("Household not found");
+
 		const partner = await UangKitaRepository.findMemberByRole(household.id, "partner");
 		if (!partner) throw new Error("Partner member not found");
 		if (partner.status === "active" && partner.user_id) {
 			throw new Error("Partner already connected");
 		}
-		await UangKitaRepository.setPartnerInviteEmail(household.id, email);
+
+		const normalizedEmail = email.trim().toLowerCase();
+		const targetUser = await UserRepository.findByEmail(normalizedEmail);
+		if (!targetUser) throw new Error("Partner account not found");
+		if (targetUser.id === userId) throw new Error("Cannot link self");
+
+		const targetHousehold = await UangKitaRepository.findHouseholdByUser(targetUser.id);
+		if (targetHousehold) throw new Error("Partner already belongs to household");
+
+		await UangKitaRepository.setPartnerInviteEmail(household.id, normalizedEmail);
+		const claimed = await UangKitaRepository.claimPendingPartnerInvite(
+			targetUser.id,
+			targetUser.email,
+			targetUser.name?.trim() || partner.display_name || "Pasangan",
+		);
+		if (!claimed) throw new Error("Partner account unavailable");
 	},
 
 	async claimPartnerInvite(user: {
@@ -335,6 +352,9 @@ export const UangKitaService = {
 		email: string;
 		name?: string | null;
 	}): Promise<boolean> {
+		// Legacy pending invites are only auto-claimed for verified accounts.
+		const account = await UserRepository.findById(user.id);
+		if (!account || account.is_verified !== 1) return false;
 		return UangKitaRepository.claimPendingPartnerInvite(
 			user.id,
 			user.email,
