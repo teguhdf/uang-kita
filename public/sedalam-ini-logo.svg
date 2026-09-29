@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 170" role="img" aria-labelledby="title desc">
+  <title id="title">Sedalam Ini.</title>
+  <desc id="desc">Logo Sedalam Ini. dengan simbol dua bentuk dan titik merah.</desc>
+  <rect width="620" height="170" fill="none"/>
+  <g transform="translate(8 15)">
+    <path d="M72 24c-28 0-50 22-50 50s22 50 50 50c9 0 18-2 25-6-17-10-28-29-28-50 0-19 9-36 24-46-6-5-13-8-21-8z" fill="#1F1F1F"/>
+    <path d="M78 40c20 0 36 14 42 33 6 18 1 39-12 53-13 14-35 19-53 13-18-7-30-24-30-43 0-18 10-34 26-42 10-6 19-13 27-14z" fill="#EAE6E1" transform="translate(31 -6) scale(.82)"/>
+    <circle cx="122" cy="26" r="18" fill="#E1463D"/>
+  </g>
+  <text x="165" y="83" font-family="Inter, Arial, sans-serif" font-size="54" font-weight="600" letter-spacing="-2" fill="#1F1F1F">Sedalam Ini</text>
+  <circle cx="454" cy="75" r="7" fill="#E1463D"/>
+  <text x="168" y="121" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="500" letter-spacing="4.8" fill="#4A4744">UANG KITA</text>
+</svg>
