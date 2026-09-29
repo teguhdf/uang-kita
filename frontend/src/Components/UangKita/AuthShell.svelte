@@ -2,7 +2,7 @@
   import { HeartHandshake, ShieldCheck, WalletCards } from 'lucide-svelte'
 </script>
 
-<section class="min-h-screen bg-[#F7F3EE] text-[#26211E] lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+<section class="min-h-[100dvh] bg-[#F7F3EE] text-[#26211E] lg:grid lg:grid-cols-[1.05fr_0.95fr]">
   <aside class="relative hidden overflow-hidden border-r border-[#E6DDD5] bg-[#EEE4DC] lg:flex lg:min-h-screen lg:flex-col lg:justify-between lg:p-12 xl:p-16">
     <div class="relative z-10">
       <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9A665D]">Sedalam Ini.</p>
@@ -53,9 +53,9 @@
     <div class="pointer-events-none absolute right-24 top-24 h-28 w-28 rounded-full bg-[#DDBEB1]/30 blur-2xl"></div>
   </aside>
 
-  <main class="flex min-h-screen items-center justify-center px-4 py-8 sm:px-6 lg:px-10 xl:px-16">
+  <main class="flex min-h-[100dvh] items-start justify-center px-3 py-5 sm:items-center sm:px-6 sm:py-8 lg:px-10 xl:px-16">
     <div class="w-full max-w-[460px]">
-      <div class="mb-8 lg:hidden">
+      <div class="mb-5 px-1 sm:mb-8 lg:hidden">
         <p class="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9A665D]">Sedalam Ini.</p>
         <p class="mt-1 text-lg font-semibold tracking-[-0.035em]">UANG KITA</p>
       </div>
