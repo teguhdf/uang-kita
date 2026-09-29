@@ -1,57 +1,39 @@
-/**
- * Resend Email Service
- * 
- * Service ini menangani pengiriman email transaksional menggunakan API Resend.
- * Membutuhkan RESEND_API_KEY di environment variables.
- */
-import { Resend } from 'resend';
+import { Resend } from "resend";
 
 let resend: Resend | null = null;
 
 if (process.env.RESEND_API_KEY) {
-  resend = new Resend(process.env.RESEND_API_KEY);
-} else {
-  console.warn("⚠️ RESEND_API_KEY not found. Email service (Resend) is disabled.");
+	resend = new Resend(process.env.RESEND_API_KEY);
 }
 
 interface MailOptions {
-  to: string;
-  subject: string;
-  text: string;
+	to: string;
+	subject: string;
+	text: string;
 }
 
-/**
- * Mengirim email menggunakan Resend API
- * 
- * @param {MailOptions} options - Opsi pengiriman email (to, subject, text)
- * @returns {Promise<any>} Response dari Resend API atau void jika client belum diinit
- * 
- * @example
- * await MailTo({
- *   to: "user@example.com",
- *   subject: "Welcome!",
- *   text: "Hello world"
- * });
- */
 export async function MailTo({ to, subject, text }: MailOptions) {
-  // Fail-safe: Jangan crash jika API key tidak ada, cukup log warning
-  if (!resend) {
-    console.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
-    return;
-  }
+	if (!resend) {
+		throw new Error("Email delivery is not configured");
+	}
 
-  try {
-    const data = await resend.emails.send({
-      from: process.env.MAIL_FROM_NAME ? `${process.env.MAIL_FROM_NAME} <${process.env.MAIL_FROM_ADDRESS}>` : 'Laju Notification <hello@laju.dev>',
-      to: to,
-      subject: subject,
-      replyTo: process.env.MAIL_FROM_ADDRESS || 'hello@laju.dev',
-      text: text,
-    });
+	const fromAddress = process.env.MAIL_FROM_ADDRESS?.trim();
+	if (!fromAddress) {
+		throw new Error("MAIL_FROM_ADDRESS is required when Resend is enabled");
+	}
 
-    return data;
-  } catch (error) {
-    console.error("❌ Failed to send email via Resend:", error);
-    throw error;
-  }
+	const fromName = process.env.MAIL_FROM_NAME?.trim() || "Sedalam Ini.";
+	const data = await resend.emails.send({
+		from: `${fromName} <${fromAddress}>`,
+		to,
+		subject,
+		replyTo: fromAddress,
+		text,
+	});
+
+	if (data.error) {
+		throw new Error(data.error.message || "Resend failed to send email");
+	}
+
+	return data;
 }
