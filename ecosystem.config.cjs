@@ -15,6 +15,8 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         DB_CONNECTION: "production",
+        APP_TIMEZONE: "Asia/Jakarta",
+        TZ: "Asia/Jakarta",
       },
     },
   ],
