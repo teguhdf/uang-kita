@@ -97,6 +97,11 @@ Route.post(
 	[authRequired],
 	UangKitaHandler.saveDecisionRules,
 );
+Route.post(
+	"/invite-partner",
+	[authRequired],
+	UangKitaHandler.invitePartner,
+);
 Route.get("/profile", [authRequired], AppHandler.profilePage);
 Route.post("/change-profile", [authRequired], AppHandler.changeProfile);
 Route.post("/change-password", [authRequired], AuthHandler.changePassword);
