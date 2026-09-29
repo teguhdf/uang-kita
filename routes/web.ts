@@ -87,6 +87,11 @@ Route.get(
 	[authRequired],
 	UangKitaHandler.purchaseSimulatorPage,
 );
+Route.post(
+	"/keputusan",
+	[authRequired],
+	UangKitaHandler.savePurchaseDecision,
+);
 Route.get(
 	"/aturan-keputusan",
 	[authRequired],
