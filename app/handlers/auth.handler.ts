@@ -9,6 +9,7 @@
 import { UserRepository } from "../repositories/user.repository";
 import { PasswordResetRepository } from "../repositories/password-reset.repository";
 import Authenticate from "../services/Authenticate";
+import UangKitaService from "../services/UangKitaService";
 import Validator from "../services/Validator";
 import {
 	loginSchema,
@@ -25,6 +26,19 @@ import { randomUUID } from "crypto";
 import dayjs from "dayjs";
 import axios from "axios";
 
+async function claimPendingUangKitaInvite(user: User): Promise<void> {
+	try {
+		await UangKitaService.claimPartnerInvite({
+			id: user.id,
+			email: user.email,
+			name: user.name,
+		});
+	} catch (error) {
+		// Invitation claiming must never block a valid login/registration.
+		console.error("UANG KITA invite claim error:", error);
+	}
+}
+
 export const AuthHandler = {
 	/**
 	 * Display login page
@@ -32,7 +46,7 @@ export const AuthHandler = {
 	 */
 	async loginPage(request: Request, response: Response) {
 		if (request.cookies.auth_id) {
-			response.redirect("/home"); // native HyperExpress = 302
+			response.redirect("/home");
 			return;
 		}
 		return inertia.render(request, response, "auth/login");
@@ -74,6 +88,7 @@ export const AuthHandler = {
 				return inertia.redirect(response, "/login");
 			}
 
+			await claimPendingUangKitaInvite(user);
 			return Authenticate.process(user, request, response);
 		} catch (error) {
 			console.error("Login error:", error);
@@ -92,7 +107,7 @@ export const AuthHandler = {
 	 */
 	async registerPage(request: Request, response: Response) {
 		if (request.cookies.auth_id) {
-			response.redirect("/home"); // native HyperExpress = 302
+			response.redirect("/home");
 			return;
 		}
 		return inertia.render(request, response, "auth/register");
@@ -133,6 +148,7 @@ export const AuthHandler = {
 				name,
 			});
 
+			await claimPendingUangKitaInvite(user);
 			return Authenticate.process(user, request, response);
 		} catch (error: any) {
 			console.error("Registration error:", error);
@@ -155,31 +171,21 @@ export const AuthHandler = {
 		}
 	},
 
-	/**
-	 * Handle logout
-	 * POST /logout
-	 */
+	/** Handle logout */
 	async logout(request: Request, response: Response) {
 		if (request.cookies.auth_id) {
 			await Authenticate.logout(request, response);
 		}
 	},
 
-	/**
-	 * Google OAuth redirect
-	 * GET /google/redirect
-	 */
+	/** Google OAuth redirect */
 	async googleRedirect(_request: Request, response: Response) {
 		const params = redirectParamsURL();
 		const googleLoginUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-		// External redirect → full page navigation via 302
 		response.status(302).setHeader("Location", googleLoginUrl).send();
 	},
 
-	/**
-	 * Google OAuth callback
-	 * GET /google/callback
-	 */
+	/** Google OAuth callback */
 	async googleCallback(request: Request, response: Response) {
 		const { code } = request.query;
 
@@ -208,38 +214,30 @@ export const AuthHandler = {
 
 		let user = await UserRepository.findByEmail(email);
 
-		if (user) {
-			return Authenticate.process(user, request, response);
-		} else {
-			const userData: import("../../app/repositories/user.repository").CreateUserData =
-				{
-					id: randomUUID(),
-					email: email,
-					password: await Authenticate.hash(email),
-					name: name || null,
-					phone: null,
-					avatar: null,
-					is_verified: verified_email ? 1 : 0,
-					is_admin: 0,
-				};
-
+		if (!user) {
+			const userData: import("../../app/repositories/user.repository").CreateUserData = {
+				id: randomUUID(),
+				email,
+				password: await Authenticate.hash(email),
+				name: name || null,
+				phone: null,
+				avatar: null,
+				is_verified: verified_email ? 1 : 0,
+				is_admin: 0,
+			};
 			user = await UserRepository.create(userData);
-			return Authenticate.process(user, request, response);
 		}
+
+		await claimPendingUangKitaInvite(user);
+		return Authenticate.process(user, request, response);
 	},
 
-	/**
-	 * Display forgot password page
-	 * GET /forgot-password
-	 */
+	/** Display forgot password page */
 	async forgotPasswordPage(request: Request, response: Response) {
 		return inertia.render(request, response, "auth/forgot-password");
 	},
 
-	/**
-	 * Send reset password link
-	 * POST /forgot-password
-	 */
+	/** Send reset password link */
 	async sendResetPassword(request: Request, response: Response) {
 		const body = await request.json();
 
@@ -279,14 +277,7 @@ export const AuthHandler = {
 			await MailTo({
 				to: user.email,
 				subject: "Reset Password",
-				text: `You have requested a password reset. If this was you, please click the following link:
-
-${process.env.APP_URL}/reset-password/${token}
-
-If you did not request a password reset, please ignore this email.
-
-This link will expire in 24 hours.
-        `,
+				text: `You have requested a password reset. If this was you, please click the following link:\n\n${process.env.APP_URL}/reset-password/${token}\n\nIf you did not request a password reset, please ignore this email.\n\nThis link will expire in 24 hours.`,
 			});
 		} catch (error) {
 			console.error("Email send error:", error);
@@ -297,14 +288,7 @@ This link will expire in 24 hours.
 				await axios.post("https://api.dripsender.id/send", {
 					api_key: process.env.DRIPSENDER_API_KEY,
 					phone: user.phone,
-					text: `You have requested a password reset. If this was you, please click the following link:
-
-${process.env.APP_URL}/reset-password/${token}
-
-If you did not request a password reset, please ignore this message.
-
-This link will expire in 24 hours.
-          `,
+					text: `You have requested a password reset. If this was you, please click the following link:\n\n${process.env.APP_URL}/reset-password/${token}\n\nIf you did not request a password reset, please ignore this message.\n\nThis link will expire in 24 hours.`,
 				});
 		} catch (error) {
 			console.error("SMS send error:", error);
@@ -314,19 +298,13 @@ This link will expire in 24 hours.
 		return inertia.redirect(response, "/forgot-password");
 	},
 
-	/**
-	 * Display reset password page
-	 * GET /reset-password/:id
-	 */
+	/** Display reset password page */
 	async resetPasswordPage(request: Request, response: Response) {
 		const id = request.params.id;
-
 		const token = PasswordResetRepository.findByToken(id);
 
 		if (!token) {
-			return response
-				.status(404)
-				.send("Link tidak valid atau sudah kadaluarsa");
+			return response.status(404).send("Link tidak valid atau sudah kadaluarsa");
 		}
 
 		return inertia.render(request, response, "auth/reset-password", {
@@ -334,13 +312,9 @@ This link will expire in 24 hours.
 		});
 	},
 
-	/**
-	 * Process password reset
-	 * POST /reset-password
-	 */
+	/** Process password reset */
 	async resetPassword(request: Request, response: Response) {
 		const body = await request.json();
-
 		const validationResult = Validator.validate(resetPasswordSchema, body);
 
 		if (!validationResult.success) {
@@ -352,17 +326,13 @@ This link will expire in 24 hours.
 		}
 
 		const { id, password } = validationResult.data!;
-
 		const token = PasswordResetRepository.findByToken(id);
 
 		if (!token) {
-			return response
-				.status(404)
-				.send("Link tidak valid atau sudah kadaluarsa");
+			return response.status(404).send("Link tidak valid atau sudah kadaluarsa");
 		}
 
 		const user = await UserRepository.findByEmail(token.email);
-
 		if (!user) {
 			return response.status(404).send("User tidak ditemukan");
 		}
@@ -376,17 +346,13 @@ This link will expire in 24 hours.
 		return Authenticate.process(user, request, response);
 	},
 
-	/**
-	 * Change password (authenticated users)
-	 * POST /change-password
-	 */
+	/** Change password */
 	async changePassword(request: Request, response: Response) {
 		if (!request.user) {
 			return response.status(401).json({ error: "Unauthorized" });
 		}
 
 		const body = await request.json();
-
 		const validationResult = Validator.validate(changePasswordSchema, body);
 
 		if (!validationResult.success) {
@@ -398,7 +364,6 @@ This link will expire in 24 hours.
 		}
 
 		const validated = validationResult.data!;
-
 		const user = await UserRepository.findById(request.user.id);
 
 		if (!user) {
@@ -415,13 +380,10 @@ This link will expire in 24 hours.
 				user.id,
 				await Authenticate.hash(validated.new_password),
 			);
-
 			return response.json({ message: "Password berhasil diubah" });
-		} else {
-			return response
-				.status(400)
-				.json({ message: "Password lama tidak cocok" });
 		}
+
+		return response.status(400).json({ message: "Password lama tidak cocok" });
 	},
 };
 
