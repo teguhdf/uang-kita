@@ -24,15 +24,13 @@ import { randomBytes, randomUUID } from "crypto";
 import dayjs from "dayjs";
 import axios from "axios";
 
-async function claimPendingUangKitaInvite(user: User): Promise<void> {
+async function postLoginPath(user: User): Promise<string> {
 	try {
-		await UangKitaService.claimPartnerInvite({
-			id: user.id,
-			email: user.email,
-			name: user.name,
-		});
+		const pending = await UangKitaService.getPendingPartnerInvite(user.id);
+		return pending ? "/undangan-pasangan" : "/home";
 	} catch (error) {
-		console.error("UANG KITA invite claim error:", error);
+		console.error("UANG KITA invite lookup error:", error);
+		return "/home";
 	}
 }
 
@@ -82,8 +80,7 @@ export const AuthHandler = {
 				return inertia.redirect(response, "/login");
 			}
 
-			await claimPendingUangKitaInvite(user);
-			return Authenticate.process(user, request, response);
+			return Authenticate.process(user, request, response, await postLoginPath(user));
 		} catch (error) {
 			console.error("Login error:", error);
 			inertia.flash(response, "error", "Login belum berhasil. Coba lagi beberapa saat nanti.");
@@ -126,7 +123,6 @@ export const AuthHandler = {
 				phone: phone?.trim() || null,
 			});
 
-			await claimPendingUangKitaInvite(user);
 			return Authenticate.process(user, request, response);
 		} catch (error: any) {
 			console.error("Registration error:", error);
@@ -201,8 +197,7 @@ export const AuthHandler = {
 				});
 			}
 
-			await claimPendingUangKitaInvite(user);
-			return Authenticate.process(user, request, response);
+			return Authenticate.process(user, request, response, await postLoginPath(user));
 		} catch (error) {
 			console.error("Google OAuth error:", error);
 			inertia.flash(response, "error", "Masuk dengan Google belum berhasil.");
@@ -323,7 +318,7 @@ export const AuthHandler = {
 		PasswordResetRepository.deleteByEmail(user.email);
 		SessionStore.destroyAllForUser(user.id);
 		inertia.flash(response, "success", "Kata sandi berhasil diperbarui.");
-		return Authenticate.process(user, request, response);
+		return Authenticate.process(user, request, response, await postLoginPath(user));
 	},
 
 	async changePassword(request: Request, response: Response) {
