@@ -36,6 +36,8 @@ export interface DashboardOverview {
 		name: string;
 	};
 	partnerName: string;
+	partnerStatus: "active" | "pending";
+	partnerInviteEmail: string | null;
 	plan: MonthlyPlanRow | null;
 	metrics: MoneyMetrics | null;
 	decisionRule: DecisionRuleRow | null;
@@ -159,6 +161,8 @@ export const UangKitaService = {
 				name: household.name,
 			},
 			partnerName: partner?.display_name || "Pasangan",
+			partnerStatus: partner?.status || "pending",
+			partnerInviteEmail: partner?.invite_email || null,
 			plan: plan || null,
 			metrics: plan ? calculateMoneyMetrics(plan) : null,
 			decisionRule: decisionRule || null,
@@ -194,6 +198,7 @@ export const UangKitaService = {
 			planInput,
 		);
 		const decisionRule = await UangKitaRepository.findDecisionRule(household.id);
+		const partner = await UangKitaRepository.findMemberByRole(household.id, "partner");
 
 		return {
 			household: {
@@ -201,6 +206,8 @@ export const UangKitaService = {
 				name: `${ownerName} & ${input.partner_name}`,
 			},
 			partnerName: input.partner_name,
+			partnerStatus: partner?.status || "pending",
+			partnerInviteEmail: partner?.invite_email || null,
 			plan,
 			metrics: calculateMoneyMetrics(plan),
 			decisionRule: decisionRule || null,
@@ -220,6 +227,31 @@ export const UangKitaService = {
 			household.id,
 			input.free_limit,
 			input.notify_limit,
+		);
+	},
+
+	async invitePartner(userId: string, email: string): Promise<void> {
+		const household = await UangKitaRepository.findHouseholdByUser(userId);
+		if (!household) throw new Error("Household not found");
+
+		const partner = await UangKitaRepository.findMemberByRole(household.id, "partner");
+		if (!partner) throw new Error("Partner member not found");
+		if (partner.status === "active" && partner.user_id) {
+			throw new Error("Partner already connected");
+		}
+
+		await UangKitaRepository.setPartnerInviteEmail(household.id, email);
+	},
+
+	async claimPartnerInvite(user: {
+		id: string;
+		email: string;
+		name?: string | null;
+	}): Promise<boolean> {
+		return UangKitaRepository.claimPendingPartnerInvite(
+			user.id,
+			user.email,
+			user.name?.trim() || "Pasangan",
 		);
 	},
 };
