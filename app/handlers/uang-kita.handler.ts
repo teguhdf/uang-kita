@@ -11,24 +11,16 @@ import {
 
 export const UangKitaHandler = {
 	async onboardingPage(request: Request, response: Response) {
-		if (!request.user) {
-			return response.status(401).json({ error: "Unauthorized" });
-		}
-
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
 		const overview = await UangKitaService.getOverview(request.user.id);
-		return inertia.render(request, response, "onboarding", {
-			overview,
-		});
+		return inertia.render(request, response, "onboarding", { overview });
 	},
 
 	async saveOnboarding(request: Request, response: Response) {
-		if (!request.user) {
-			return response.status(401).json({ error: "Unauthorized" });
-		}
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
 
 		const body = await request.json();
 		const validationResult = Validator.validate(monthlyPlanSchema, body);
-
 		if (!validationResult.success) {
 			const errors = validationResult.errors || {};
 			const firstError = Object.values(errors)[0]?.[0] || "Data belum lengkap";
@@ -42,9 +34,7 @@ export const UangKitaHandler = {
 	},
 
 	async purchaseSimulatorPage(request: Request, response: Response) {
-		if (!request.user) {
-			return response.status(401).json({ error: "Unauthorized" });
-		}
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
 
 		const overview = await UangKitaService.getOverview(request.user.id);
 		if (!overview?.plan || !overview.metrics) {
@@ -56,15 +46,11 @@ export const UangKitaHandler = {
 			return inertia.redirect(response, "/onboarding");
 		}
 
-		return inertia.render(request, response, "purchase-simulator", {
-			overview,
-		});
+		return inertia.render(request, response, "purchase-simulator", { overview });
 	},
 
 	async savePurchaseDecision(request: Request, response: Response) {
-		if (!request.user) {
-			return response.status(401).json({ error: "Unauthorized" });
-		}
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
 
 		const body = await request.json();
 		const validationResult = Validator.validate(purchaseDecisionSchema, body);
@@ -88,10 +74,12 @@ export const UangKitaHandler = {
 			}[validationResult.data!.outcome];
 			inertia.flash(response, "success", outcomeMessage);
 		} catch (error) {
-			const message =
-				error instanceof Error && error.message === "Purchase exceeds available money"
-					? "Nominal pembelian lebih besar daripada uang yang tersedia saat ini."
-					: "Keputusan belum bisa disimpan. Coba lagi.";
+			let message = "Keputusan belum bisa disimpan. Coba lagi.";
+			if (error instanceof Error && error.message === "Purchase exceeds available money") {
+				message = "Nominal pembelian lebih besar daripada uang yang tersedia saat ini.";
+			} else if (error instanceof Error && error.message === "Purchase balance changed") {
+				message = "Kondisi uang baru saja berubah. Muat ulang lalu cek dampaknya sekali lagi.";
+			}
 			inertia.flash(response, "error", message);
 		}
 
@@ -99,9 +87,7 @@ export const UangKitaHandler = {
 	},
 
 	async decisionRulesPage(request: Request, response: Response) {
-		if (!request.user) {
-			return response.status(401).json({ error: "Unauthorized" });
-		}
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
 
 		const overview = await UangKitaService.getOverview(request.user.id);
 		if (!overview?.plan) {
@@ -113,19 +99,14 @@ export const UangKitaHandler = {
 			return inertia.redirect(response, "/onboarding");
 		}
 
-		return inertia.render(request, response, "decision-rules", {
-			overview,
-		});
+		return inertia.render(request, response, "decision-rules", { overview });
 	},
 
 	async saveDecisionRules(request: Request, response: Response) {
-		if (!request.user) {
-			return response.status(401).json({ error: "Unauthorized" });
-		}
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
 
 		const body = await request.json();
 		const validationResult = Validator.validate(decisionRuleSchema, body);
-
 		if (!validationResult.success) {
 			const errors = validationResult.errors || {};
 			const firstError =
@@ -134,18 +115,13 @@ export const UangKitaHandler = {
 			return inertia.redirect(response, "/aturan-keputusan");
 		}
 
-		await UangKitaService.saveDecisionRule(
-			request.user.id,
-			validationResult.data!,
-		);
+		await UangKitaService.saveDecisionRule(request.user.id, validationResult.data!);
 		inertia.flash(response, "success", "Aturan keputusan kalian sudah tersimpan.");
 		return inertia.redirect(response, "/aturan-keputusan");
 	},
 
 	async invitePartner(request: Request, response: Response) {
-		if (!request.user) {
-			return response.status(401).json({ error: "Unauthorized" });
-		}
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
 
 		const body = await request.json();
 		const validationResult = Validator.validate(partnerInviteSchema, body);
@@ -164,15 +140,20 @@ export const UangKitaHandler = {
 
 		try {
 			await UangKitaService.invitePartner(request.user.id, email);
-			inertia.flash(
-				response,
-				"success",
-				`Undangan disiapkan untuk ${email}. Minta pasangan daftar atau login dengan email itu.`,
-			);
+			inertia.flash(response, "success", "Akun pasangan berhasil dihubungkan.");
 		} catch (error) {
-			const message = error instanceof Error && error.message === "Partner already connected"
-				? "Akun pasangan sudah terhubung."
-				: "Undangan pasangan belum bisa disimpan.";
+			let message = "Akun pasangan belum bisa dihubungkan.";
+			if (error instanceof Error) {
+				if (error.message === "Partner already connected") {
+					message = "Akun pasangan sudah terhubung.";
+				} else if (error.message === "Partner account not found") {
+					message = "Minta pasangan membuat akun UANG KITA terlebih dulu, lalu masukkan email akun tersebut.";
+				} else if (error.message === "Partner already belongs to household") {
+					message = "Akun tersebut sudah terhubung ke rumah tangga UANG KITA lain.";
+				} else if (error.message === "Cannot link self") {
+					message = "Gunakan akun pasangan, bukan akun kamu sendiri.";
+				}
+			}
 			inertia.flash(response, "error", message);
 		}
 
