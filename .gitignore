@@ -7,6 +7,8 @@ data/*
 !data/.gitkeep
 storage/*
 !storage/.gitkeep
+backups/*
+!backups/.gitkeep
 
 # Vite dynamic port file
 .vite-port
