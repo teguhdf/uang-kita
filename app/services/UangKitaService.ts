@@ -5,6 +5,8 @@ import UangKitaRepository, {
 	type SavePlanData,
 } from "../repositories/uang-kita.repository";
 
+const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Jakarta";
+
 export interface MoneyMetrics {
 	totalAllocated: number;
 	flexibleAmount: number;
@@ -44,10 +46,7 @@ export interface CarryoverPlanSeed {
 }
 
 export interface DashboardOverview {
-	household: {
-		id: string;
-		name: string;
-	};
+	household: { id: string; name: string };
 	partnerName: string;
 	partnerStatus: "active" | "pending";
 	partnerInviteEmail: string | null;
@@ -58,10 +57,25 @@ export interface DashboardOverview {
 	recentDecisions: PurchaseDecisionRow[];
 }
 
+function datePartsInTimeZone(date: Date, timeZone = APP_TIMEZONE) {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(date);
+	const get = (type: string) => parts.find((part) => part.type === type)?.value || "";
+	return { year: get("year"), month: get("month"), day: get("day") };
+}
+
 export function currentPeriod(date = new Date()): string {
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const { year, month } = datePartsInTimeZone(date);
 	return `${year}-${month}`;
+}
+
+function currentDateKey(date = new Date()): string {
+	const { year, month, day } = datePartsInTimeZone(date);
+	return `${year}-${month}-${day}`;
 }
 
 export function buildCarryoverPlanSeed(
@@ -106,11 +120,14 @@ export function calculateMoneyMetrics(
 	const flexibleAmount = Math.max(0, rawFlexible);
 	const deficitAmount = Math.max(0, -rawFlexible);
 
-	const target = new Date(`${plan.next_income_date}T00:00:00`);
 	const dayMs = 24 * 60 * 60 * 1000;
-	const daysRemaining = Number.isNaN(target.getTime())
-		? 1
-		: Math.max(1, Math.ceil((target.getTime() - now.getTime()) / dayMs));
+	const todayKey = currentDateKey(now);
+	const targetMs = Date.parse(`${plan.next_income_date}T00:00:00Z`);
+	const todayMs = Date.parse(`${todayKey}T00:00:00Z`);
+	const daysRemaining =
+		Number.isNaN(targetMs) || Number.isNaN(todayMs)
+			? 1
+			: Math.max(1, Math.ceil((targetMs - todayMs) / dayMs));
 
 	const safeDaily = Math.floor(flexibleAmount / daysRemaining);
 	const weekUnits = Math.max(1, daysRemaining / 7);
@@ -165,7 +182,6 @@ export function classifyDecisionRule(
 	rule: Pick<DecisionRuleRow, "free_limit" | "notify_limit"> | null | undefined,
 ): DecisionLevel {
 	if (!rule) return "unconfigured";
-
 	const normalizedAmount = Math.max(0, Math.floor(Number(amount) || 0));
 	if (normalizedAmount <= rule.free_limit) return "free";
 	if (normalizedAmount <= rule.notify_limit) return "notify";
@@ -178,10 +194,7 @@ export const UangKitaService = {
 		if (!household) return null;
 
 		const period = currentPeriod();
-		const partner = await UangKitaRepository.findMemberByRole(
-			household.id,
-			"partner",
-		);
+		const partner = await UangKitaRepository.findMemberByRole(household.id, "partner");
 		const plan = await UangKitaRepository.findPlanByPeriod(household.id, period);
 		const previousPlan = plan
 			? undefined
@@ -193,10 +206,7 @@ export const UangKitaService = {
 		);
 
 		return {
-			household: {
-				id: household.id,
-				name: household.name,
-			},
+			household: { id: household.id, name: household.name },
 			partnerName: partner?.display_name || "Pasangan",
 			partnerStatus: partner?.status || "pending",
 			partnerInviteEmail: partner?.invite_email || null,
@@ -230,7 +240,6 @@ export const UangKitaService = {
 		}
 
 		const { partner_name: _partnerName, ...planInput } = input;
-
 		const plan = await UangKitaRepository.upsertPlan(
 			household.id,
 			currentPeriod(),
@@ -244,10 +253,7 @@ export const UangKitaService = {
 		);
 
 		return {
-			household: {
-				id: household.id,
-				name: `${ownerName} & ${input.partner_name}`,
-			},
+			household: { id: household.id, name: `${ownerName} & ${input.partner_name}` },
 			partnerName: input.partner_name,
 			partnerStatus: partner?.status || "pending",
 			partnerInviteEmail: partner?.invite_email || null,
@@ -264,10 +270,7 @@ export const UangKitaService = {
 		input: { free_limit: number; notify_limit: number },
 	): Promise<DecisionRuleRow> {
 		const household = await UangKitaRepository.findHouseholdByUser(userId);
-		if (!household) {
-			throw new Error("Household not found");
-		}
-
+		if (!household) throw new Error("Household not found");
 		return UangKitaRepository.upsertDecisionRule(
 			household.id,
 			input.free_limit,
@@ -311,19 +314,19 @@ export const UangKitaService = {
 			safe_daily_after: impact.safeDailyAfter,
 			safe_weekly_before: metrics.safeWeekly,
 			safe_weekly_after: impact.safeWeeklyAfter,
+			expected_available_money: plan.available_money,
+			expected_plan_updated_at: plan.updated_at,
 		});
 	},
 
 	async invitePartner(userId: string, email: string): Promise<void> {
 		const household = await UangKitaRepository.findHouseholdByUser(userId);
 		if (!household) throw new Error("Household not found");
-
 		const partner = await UangKitaRepository.findMemberByRole(household.id, "partner");
 		if (!partner) throw new Error("Partner member not found");
 		if (partner.status === "active" && partner.user_id) {
 			throw new Error("Partner already connected");
 		}
-
 		await UangKitaRepository.setPartnerInviteEmail(household.id, email);
 	},
 
