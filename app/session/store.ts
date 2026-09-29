@@ -1,11 +1,6 @@
 /**
  * Session Store
- *
- * Manages HTTP sessions with database persistence.
- * User data is stored as JSON in the sessions.data column.
- * This enables session-based auth WITHOUT querying the users table.
- *
- * Mirrors laju-go's app/session/session.go architecture.
+ * Manages HTTP sessions with database persistence and a short in-memory cache.
  */
 
 import { randomUUID } from "crypto";
@@ -51,37 +46,30 @@ function clearCookie(res: Response, name: string): void {
 export const SessionStore = {
 	get(req: Request): SessionData {
 		const sessionId = req.cookies?.[SESSION_COOKIE];
-		if (!sessionId) {
-			return emptySessionData();
-		}
+		if (!sessionId) return emptySessionData();
 
 		const cached = sessionCache.get(sessionId);
 		if (cached && cached.expiresAt > Date.now()) {
 			return { ...cached.data };
 		}
-		if (cached) {
-			sessionCache.delete(sessionId);
-		}
+		if (cached) sessionCache.delete(sessionId);
 
 		try {
 			const row = SessionRepository.findById(sessionId);
-			if (!row) {
-				return emptySessionData();
-			}
+			if (!row) return emptySessionData();
 
 			if (row.expires_at && new Date(row.expires_at) < new Date()) {
 				SessionRepository.delete(sessionId);
+				sessionCache.delete(sessionId);
 				return emptySessionData();
 			}
 
 			const data = JSON.parse(row.data || "{}") as SessionData;
-
 			sessionCache.set(sessionId, {
 				data: { ...data },
 				expiresAt: Date.now() + CACHE_TTL_MS,
 			});
-
-			return data;
+			return { ...data };
 		} catch {
 			return emptySessionData();
 		}
@@ -103,9 +91,7 @@ export const SessionStore = {
 			data: { ...data },
 			expiresAt: Date.now() + CACHE_TTL_MS,
 		});
-
 		setCookie(res, SESSION_COOKIE, sessionId, SESSION_TTL_MS, true);
-
 		return sessionId;
 	},
 
@@ -115,7 +101,6 @@ export const SessionStore = {
 
 		const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
 		SessionRepository.update(sessionId, JSON.stringify(data), expiresAt);
-
 		sessionCache.set(sessionId, {
 			data: { ...data },
 			expiresAt: Date.now() + CACHE_TTL_MS,
@@ -124,13 +109,18 @@ export const SessionStore = {
 
 	destroy(req: Request, res: Response): void {
 		const sessionId = req.cookies?.[SESSION_COOKIE];
-
 		if (sessionId) {
 			SessionRepository.delete(sessionId);
 			sessionCache.delete(sessionId);
 		}
-
 		clearCookie(res, SESSION_COOKIE);
+	},
+
+	destroyAllForUser(userId: string): void {
+		SessionRepository.deleteByUserId(userId);
+		for (const [sessionId, entry] of sessionCache.entries()) {
+			if (entry.data.user_id === userId) sessionCache.delete(sessionId);
+		}
 	},
 
 	flash(res: Response, key: string, message: string): void {
@@ -143,18 +133,13 @@ export const SessionStore = {
 		const cookies = req.cookies || {};
 
 		for (const type of types) {
-			if (cookies[type]) {
-				messages[type] = cookies[type];
-			}
+			if (cookies[type]) messages[type] = cookies[type];
 		}
-
 		return messages;
 	},
 
 	redirect(res: Response, url: string): void {
-		if (!url.startsWith("/")) {
-			url = "/login";
-		}
+		if (!url.startsWith("/")) url = "/login";
 		res.status(303).setHeader("Location", url).send();
 	},
 };
