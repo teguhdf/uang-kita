@@ -119,7 +119,7 @@ export const UangKitaHandler = {
 			inertia.flash(
 				response,
 				"success",
-				"Undangan sudah disiapkan. Minta pasangan keluar lalu masuk kembali ke akun UANG KITA miliknya untuk menyelesaikan koneksi.",
+				"Undangan sudah disiapkan. Saat pasangan masuk lagi, ia akan diminta menerima atau menolak koneksi ini.",
 			);
 		} catch (error) {
 			let message = "Akun pasangan belum bisa dihubungkan.";
@@ -137,6 +137,31 @@ export const UangKitaHandler = {
 			inertia.flash(response, "error", message);
 		}
 		return inertia.redirect(response, "/aturan-keputusan");
+	},
+
+	async partnerInvitePage(request: Request, response: Response) {
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
+		const invite = await UangKitaService.getPendingPartnerInvite(request.user.id);
+		if (!invite) return inertia.redirect(response, "/home");
+		return inertia.render(request, response, "partner-invite", { invite });
+	},
+
+	async acceptPartnerInvite(request: Request, response: Response) {
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
+		const accepted = await UangKitaService.acceptPartnerInvite(request.user.id);
+		if (!accepted) {
+			inertia.flash(response, "error", "Undangan sudah tidak tersedia atau kondisi akun sudah berubah.");
+			return inertia.redirect(response, "/home");
+		}
+		inertia.flash(response, "success", "Kamu sudah terhubung ke ruang UANG KITA bersama pasangan.");
+		return inertia.redirect(response, "/home");
+	},
+
+	async rejectPartnerInvite(request: Request, response: Response) {
+		if (!request.user) return response.status(401).json({ error: "Unauthorized" });
+		await UangKitaService.rejectPartnerInvite(request.user.id);
+		inertia.flash(response, "success", "Undangan pasangan sudah ditolak.");
+		return inertia.redirect(response, "/home");
 	},
 };
 
