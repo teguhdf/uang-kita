@@ -28,4 +28,15 @@ export const monthlyPlanSchema = z.object({
 		}),
 });
 
+export const decisionRuleSchema = z
+	.object({
+		free_limit: amount,
+		notify_limit: amount,
+	})
+	.refine((data) => data.notify_limit >= data.free_limit, {
+		message: "Batas kasih tahu harus sama atau lebih besar dari batas bebas",
+		path: ["notify_limit"],
+	});
+
 export type MonthlyPlanInput = z.infer<typeof monthlyPlanSchema>;
+export type DecisionRuleInput = z.infer<typeof decisionRuleSchema>;
