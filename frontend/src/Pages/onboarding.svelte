@@ -8,6 +8,7 @@
     Landmark,
     LoaderCircle,
     PiggyBank,
+    RotateCcw,
     ShieldCheck,
     UserRound,
     UsersRound,
@@ -17,6 +18,7 @@
 
   let { overview, flash } = $props()
   let isLoading = $state(false)
+  const carryover = overview?.carryoverSeed || null
 
   function localDateInput(date = new Date()) {
     const year = date.getFullYear()
@@ -31,16 +33,23 @@
     return localDateInput(date)
   }
 
+  function formatPeriod(value) {
+    if (!value) return 'bulan sebelumnya'
+    const date = new Date(`${value}-01T00:00:00`)
+    if (Number.isNaN(date.getTime())) return 'bulan sebelumnya'
+    return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(date)
+  }
+
   let form = $state({
     partner_name: overview?.partnerName || '',
-    monthly_income: overview?.plan?.monthly_income || 0,
-    available_money: overview?.plan?.available_money || 0,
-    fixed_commitments: overview?.plan?.fixed_commitments || 0,
-    debt_payments: overview?.plan?.debt_payments || 0,
-    savings_target: overview?.plan?.savings_target || 0,
-    safety_buffer: overview?.plan?.safety_buffer || 0,
-    personal_owner: overview?.plan?.personal_owner || 0,
-    personal_partner: overview?.plan?.personal_partner || 0,
+    monthly_income: overview?.plan?.monthly_income ?? carryover?.monthly_income ?? 0,
+    available_money: overview?.plan?.available_money ?? 0,
+    fixed_commitments: overview?.plan?.fixed_commitments ?? carryover?.fixed_commitments ?? 0,
+    debt_payments: overview?.plan?.debt_payments ?? carryover?.debt_payments ?? 0,
+    savings_target: overview?.plan?.savings_target ?? carryover?.savings_target ?? 0,
+    safety_buffer: overview?.plan?.safety_buffer ?? carryover?.safety_buffer ?? 0,
+    personal_owner: overview?.plan?.personal_owner ?? carryover?.personal_owner ?? 0,
+    personal_partner: overview?.plan?.personal_partner ?? carryover?.personal_partner ?? 0,
     next_income_date: overview?.plan?.next_income_date || defaultNextIncomeDate(),
   })
 
@@ -102,6 +111,16 @@
       </p>
     </section>
 
+    {#if carryover && !overview?.plan}
+      <div class="mb-5 flex items-start gap-3 rounded-[22px] border border-[#F0E1C5] bg-[#FFF9EE] p-4 text-[#6D552A] sm:p-5">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#B8791D]"><RotateCcw size={17} /></div>
+        <div>
+          <p class="text-sm font-semibold">Struktur {formatPeriod(carryover.sourcePeriod)} sudah dibawa.</p>
+          <p class="mt-1 text-xs leading-5 text-[#806D4B]">Komitmen, target, buffer, dan ruang personal sudah terisi sebagai titik awal. Uang tersedia tidak disalin. Cek ulang semua nominal dan tanggal pemasukan sebelum menyimpan bulan baru.</p>
+        </div>
+      </div>
+    {/if}
+
     {#if flash?.error}
       <div class="mb-5 flex items-start gap-3 rounded-2xl border border-[#F0CFCB] bg-[#FFF5F3] p-4 text-[#9E3A33]">
         <CircleAlert class="mt-0.5 shrink-0" size={18} />
@@ -142,7 +161,7 @@
             <div>
               <label for="available_money" class="mb-2 block text-sm font-semibold text-[#3F3B38]">Uang tersedia saat ini</label>
               <input id="available_money" name="available_money" type="number" min="0" step="1000" required bind:value={form.available_money} class="uk-input px-4 py-3.5 text-[15px]" />
-              <p class="mt-1.5 text-[11px] font-medium text-[#817C77]">{rupiah(form.available_money)}</p>
+              <p class="mt-1.5 text-[11px] font-medium text-[#817C77]">{rupiah(form.available_money)}{#if carryover && !overview?.plan} · isi kondisi aktual{/if}</p>
             </div>
 
             <div>
@@ -245,7 +264,7 @@
 
           <div class="border-t border-[#F0ECE8] bg-[#FAFAF8] p-4 sm:p-5">
             <button type="submit" disabled={isLoading || deficitAmount > 0} class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#E1463D] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#C9362E] disabled:cursor-not-allowed disabled:opacity-50">
-              {#if isLoading}<LoaderCircle class="animate-spin" size={18} /> Menyimpan...{:else}{overview?.plan ? 'Perbarui bulan ini' : 'Simpan & lihat Angka Aman'} <ArrowRight size={17} />{/if}
+              {#if isLoading}<LoaderCircle class="animate-spin" size={18} /> Menyimpan...{:else}{overview?.plan ? 'Perbarui bulan ini' : carryover ? 'Simpan bulan baru' : 'Simpan & lihat Angka Aman'} <ArrowRight size={17} />{/if}
             </button>
           </div>
         </section>
