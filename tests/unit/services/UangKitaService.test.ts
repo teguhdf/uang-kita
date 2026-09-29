@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	calculateMoneyMetrics,
+	classifyDecisionRule,
 	simulatePurchaseImpact,
 } from "../../../app/services/UangKitaService";
 
@@ -87,5 +88,22 @@ describe("UANG KITA Angka Aman engine", () => {
 		expect(impact.deficitAfter).toBe(300_000);
 		expect(impact.safeDailyAfter).toBe(0);
 		expect(impact.safeWeeklyAfter).toBe(0);
+	});
+
+	it("classifies purchase communication using the couple's own limits", () => {
+		const rule = {
+			free_limit: 100_000,
+			notify_limit: 500_000,
+		};
+
+		expect(classifyDecisionRule(75_000, rule)).toBe("free");
+		expect(classifyDecisionRule(100_000, rule)).toBe("free");
+		expect(classifyDecisionRule(137_000, rule)).toBe("notify");
+		expect(classifyDecisionRule(500_000, rule)).toBe("notify");
+		expect(classifyDecisionRule(500_001, rule)).toBe("discuss");
+	});
+
+	it("does not invent a decision rule when the couple has not configured one", () => {
+		expect(classifyDecisionRule(137_000, null)).toBe("unconfigured");
 	});
 });
