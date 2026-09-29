@@ -15,7 +15,7 @@
 
     const navItems = [
         { key: "home", label: "Beranda", href: "/home", icon: Home, enabled: true },
-        { key: "plan", label: "Rencana", href: "#", icon: WalletCards, enabled: false },
+        { key: "plan", label: "Rencana", href: "/onboarding", icon: WalletCards, enabled: true },
         { key: "decisions", label: "Keputusan", href: "#", icon: MessageCircle, enabled: false },
         { key: "couple", label: "Kita", href: "#", icon: UsersRound, enabled: false },
     ];
