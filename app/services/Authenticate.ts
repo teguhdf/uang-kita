@@ -2,26 +2,19 @@
  * Authentication Service
  * Handles user authentication operations including password hashing,
  * session management, and login/logout functionality.
- *
- * Mirrors laju-go's app/services/auth.go pattern.
- * Sessions store user data as JSON — no users table query needed for auth.
  */
 
 import { SessionStore } from "../session/store";
 import type { SessionData } from "../session/session";
 import type { Request, Response, User } from "../../type";
-import { pbkdf2Sync, randomBytes } from "crypto";
+import { pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
 
-// PBKDF2 configuration
 const ITERATIONS = 100000;
 const KEYLEN = 64;
 const DIGEST = "sha512";
 const SALT_SIZE = 16;
 
 export const Authenticate = {
-	/**
-	 * Hash a password using PBKDF2
-	 */
 	async hash(password: string): Promise<string> {
 		const salt = randomBytes(SALT_SIZE).toString("hex");
 		const hash = pbkdf2Sync(
@@ -34,11 +27,10 @@ export const Authenticate = {
 		return `${salt}:${hash}`;
 	},
 
-	/**
-	 * Compare a password with a stored hash
-	 */
 	async compare(password: string, storedHash: string): Promise<boolean> {
 		const [salt, hash] = storedHash.split(":");
+		if (!salt || !hash) return false;
+
 		const newHash = pbkdf2Sync(
 			password,
 			salt,
@@ -46,13 +38,13 @@ export const Authenticate = {
 			KEYLEN,
 			DIGEST,
 		).toString("hex");
-		return hash === newHash;
+
+		const expected = Buffer.from(hash, "hex");
+		const actual = Buffer.from(newHash, "hex");
+		if (expected.length !== actual.length) return false;
+		return timingSafeEqual(expected, actual);
 	},
 
-	/**
-	 * Process user login — create a session with user data as JSON.
-	 * No additional query to users table needed after this.
-	 */
 	async process(
 		user: User,
 		_request: Request,
@@ -73,9 +65,6 @@ export const Authenticate = {
 		SessionStore.redirect(response, redirectPath);
 	},
 
-	/**
-	 * Logout — destroy the session
-	 */
 	async logout(request: Request, response: Response) {
 		SessionStore.destroy(request, response);
 		SessionStore.redirect(response, "/login");
