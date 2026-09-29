@@ -1,6 +1,7 @@
 import UangKitaRepository, {
 	type DecisionRuleRow,
 	type MonthlyPlanRow,
+	type PurchaseDecisionRow,
 	type SavePlanData,
 } from "../repositories/uang-kita.repository";
 
@@ -25,9 +26,21 @@ export interface PurchaseImpact {
 }
 
 export type DecisionLevel = "free" | "notify" | "discuss" | "unconfigured";
+export type PurchaseOutcome = "bought" | "later" | "cancelled";
 
 export interface UangKitaInput extends SavePlanData {
 	partner_name: string;
+}
+
+export interface CarryoverPlanSeed {
+	sourcePeriod: string;
+	monthly_income: number;
+	fixed_commitments: number;
+	debt_payments: number;
+	savings_target: number;
+	safety_buffer: number;
+	personal_owner: number;
+	personal_partner: number;
 }
 
 export interface DashboardOverview {
@@ -39,14 +52,32 @@ export interface DashboardOverview {
 	partnerStatus: "active" | "pending";
 	partnerInviteEmail: string | null;
 	plan: MonthlyPlanRow | null;
+	carryoverSeed: CarryoverPlanSeed | null;
 	metrics: MoneyMetrics | null;
 	decisionRule: DecisionRuleRow | null;
+	recentDecisions: PurchaseDecisionRow[];
 }
 
 export function currentPeriod(date = new Date()): string {
 	const year = date.getFullYear();
 	const month = String(date.getMonth() + 1).padStart(2, "0");
 	return `${year}-${month}`;
+}
+
+export function buildCarryoverPlanSeed(
+	plan: MonthlyPlanRow | null | undefined,
+): CarryoverPlanSeed | null {
+	if (!plan) return null;
+	return {
+		sourcePeriod: plan.period,
+		monthly_income: plan.monthly_income,
+		fixed_commitments: plan.fixed_commitments,
+		debt_payments: plan.debt_payments,
+		savings_target: plan.savings_target,
+		safety_buffer: plan.safety_buffer,
+		personal_owner: plan.personal_owner,
+		personal_partner: plan.personal_partner,
+	};
 }
 
 export function calculateMoneyMetrics(
@@ -100,7 +131,8 @@ export function simulatePurchaseImpact(
 	amount: number,
 ): PurchaseImpact {
 	const purchaseAmount = Math.max(0, Math.floor(Number(amount) || 0));
-	const rawAfter = metrics.flexibleAmount - purchaseAmount;
+	const currentHeadroom = metrics.flexibleAmount - metrics.deficitAmount;
+	const rawAfter = currentHeadroom - purchaseAmount;
 	const flexibleAfter = Math.max(0, rawAfter);
 	const deficitAfter = Math.max(0, -rawAfter);
 	const daysRemaining = Math.max(1, metrics.daysRemaining);
@@ -110,7 +142,7 @@ export function simulatePurchaseImpact(
 	);
 
 	let status: PurchaseImpact["status"] = "within-flexible";
-	if (purchaseAmount > metrics.flexibleAmount) {
+	if (purchaseAmount > metrics.flexibleAmount || metrics.deficitAmount > 0) {
 		status = "over-flexible";
 	} else if (purchaseAmount > 0 && purchaseAmount === metrics.flexibleAmount) {
 		status = "uses-all-flexible";
@@ -145,15 +177,20 @@ export const UangKitaService = {
 		const household = await UangKitaRepository.findHouseholdByUser(userId);
 		if (!household) return null;
 
+		const period = currentPeriod();
 		const partner = await UangKitaRepository.findMemberByRole(
 			household.id,
 			"partner",
 		);
-		const plan = await UangKitaRepository.findPlanByPeriod(
-			household.id,
-			currentPeriod(),
-		);
+		const plan = await UangKitaRepository.findPlanByPeriod(household.id, period);
+		const previousPlan = plan
+			? undefined
+			: await UangKitaRepository.findLatestPlanBeforePeriod(household.id, period);
 		const decisionRule = await UangKitaRepository.findDecisionRule(household.id);
+		const recentDecisions = await UangKitaRepository.listRecentPurchaseDecisions(
+			household.id,
+			8,
+		);
 
 		return {
 			household: {
@@ -164,8 +201,10 @@ export const UangKitaService = {
 			partnerStatus: partner?.status || "pending",
 			partnerInviteEmail: partner?.invite_email || null,
 			plan: plan || null,
+			carryoverSeed: buildCarryoverPlanSeed(previousPlan),
 			metrics: plan ? calculateMoneyMetrics(plan) : null,
 			decisionRule: decisionRule || null,
+			recentDecisions,
 		};
 	},
 
@@ -199,6 +238,10 @@ export const UangKitaService = {
 		);
 		const decisionRule = await UangKitaRepository.findDecisionRule(household.id);
 		const partner = await UangKitaRepository.findMemberByRole(household.id, "partner");
+		const recentDecisions = await UangKitaRepository.listRecentPurchaseDecisions(
+			household.id,
+			8,
+		);
 
 		return {
 			household: {
@@ -209,8 +252,10 @@ export const UangKitaService = {
 			partnerStatus: partner?.status || "pending",
 			partnerInviteEmail: partner?.invite_email || null,
 			plan,
+			carryoverSeed: null,
 			metrics: calculateMoneyMetrics(plan),
 			decisionRule: decisionRule || null,
+			recentDecisions,
 		};
 	},
 
@@ -228,6 +273,45 @@ export const UangKitaService = {
 			input.free_limit,
 			input.notify_limit,
 		);
+	},
+
+	async recordPurchaseDecision(
+		userId: string,
+		input: { item_name: string; amount: number; outcome: PurchaseOutcome },
+	): Promise<PurchaseDecisionRow> {
+		const household = await UangKitaRepository.findHouseholdByUser(userId);
+		if (!household) throw new Error("Household not found");
+
+		const period = currentPeriod();
+		const plan = await UangKitaRepository.findPlanByPeriod(household.id, period);
+		if (!plan) throw new Error("Plan not found");
+
+		const amount = Math.max(0, Math.floor(Number(input.amount) || 0));
+		if (input.outcome === "bought" && amount > plan.available_money) {
+			throw new Error("Purchase exceeds available money");
+		}
+
+		const metrics = calculateMoneyMetrics(plan);
+		const impact = simulatePurchaseImpact(metrics, amount);
+		const rule = await UangKitaRepository.findDecisionRule(household.id);
+		const decisionLevel = classifyDecisionRule(amount, rule);
+
+		return UangKitaRepository.recordPurchaseDecision(household.id, {
+			created_by: userId,
+			period,
+			item_name: input.item_name.trim(),
+			amount,
+			outcome: input.outcome,
+			impact_status: impact.status,
+			decision_level: decisionLevel,
+			flexible_before: metrics.flexibleAmount,
+			flexible_after: impact.flexibleAfter,
+			deficit_after: impact.deficitAfter,
+			safe_daily_before: metrics.safeDaily,
+			safe_daily_after: impact.safeDailyAfter,
+			safe_weekly_before: metrics.safeWeekly,
+			safe_weekly_after: impact.safeWeeklyAfter,
+		});
 	},
 
 	async invitePartner(userId: string, email: string): Promise<void> {
