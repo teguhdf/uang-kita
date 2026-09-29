@@ -120,6 +120,21 @@ export const UangKitaRepository = {
 		);
 	},
 
+	async findPendingPartnerInviteByEmail(
+		email: string,
+	): Promise<HouseholdMemberRow | undefined> {
+		return DB.get<HouseholdMemberRow>(
+			`SELECT * FROM household_members
+       WHERE role = 'partner'
+         AND status = 'pending'
+         AND user_id IS NULL
+         AND LOWER(invite_email) = LOWER(?)
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+			[email.trim().toLowerCase()],
+		);
+	},
+
 	async findPlanByPeriod(
 		householdId: string,
 		period: string,
@@ -256,14 +271,14 @@ export const UangKitaRepository = {
 		);
 		if (existingMembership) return false;
 
-		const pending = DB.get<HouseholdMemberRow>(
-			`SELECT * FROM household_members
-       WHERE role = 'partner' AND status = 'pending' AND LOWER(invite_email) = LOWER(?)
-       ORDER BY updated_at DESC
-       LIMIT 1`,
-			[normalizedEmail],
-		);
+		const pending = await this.findPendingPartnerInviteByEmail(normalizedEmail);
 		if (!pending) return false;
+
+		const account = DB.get<{ id: string; email: string; created_at: number }>(
+			"SELECT id, email, created_at FROM users WHERE id = ? AND LOWER(email) = LOWER(?) LIMIT 1",
+			[userId, normalizedEmail],
+		);
+		if (!account || account.created_at > pending.updated_at) return false;
 
 		const result = DB.run(
 			`UPDATE household_members
