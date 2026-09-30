@@ -17,7 +17,7 @@
 
     const navItems = [
         { key: "home", label: "Beranda", href: "/home", icon: Home },
-        { key: "pulse", label: "Pulse", href: "/pulse-uang", icon: Activity },
+        { key: "pulse", label: "Cek Uang", href: "/pulse-uang", icon: Activity },
         { key: "plan", label: "Rencana", href: "/onboarding", icon: CalendarDays },
         { key: "decisions", label: "Keputusan", href: "/aman-kalau-dibeli", icon: MessageCircle },
         { key: "couple", label: "Kita", href: "/aturan-keputusan", icon: UsersRound },
