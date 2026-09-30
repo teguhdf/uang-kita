@@ -47,7 +47,7 @@ describe("Ngobrol Mingguan", () => {
 	}
 
 	it("allows the first conversation and waits seven days for the next one", async () => {
-		const now = Date.parse("2026-09-30T02:00:00Z");
+		const now = Date.parse("2026-09-10T02:00:00Z");
 		await setupPlan(now);
 
 		const before = await WeeklyCheckinService.getSummary(userId, now);
@@ -83,7 +83,7 @@ describe("Ngobrol Mingguan", () => {
 	});
 
 	it("captures decision counts since the previous weekly conversation", async () => {
-		const now = Date.parse("2026-09-30T02:00:00Z");
+		const now = Date.parse("2026-09-10T02:00:00Z");
 		const { household, period } = await setupPlan(now);
 
 		await WeeklyCheckinService.save(userId, { status: "aman" }, now);
