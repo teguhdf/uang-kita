@@ -97,7 +97,7 @@
     <div class="mx-auto max-w-4xl">
         <section class="mb-6">
             <div class="inline-flex items-center gap-2 rounded-full bg-[#FFF1EF] px-3 py-1.5 text-xs font-semibold text-[#C9362E]">
-                <RotateCcw size={15} /> Reset bulanan
+                <RotateCcw size={15} /> Pergantian bulan
             </div>
             <h1 class="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-0.045em] text-[#1F1F1F] sm:text-[38px]">Mulai bulan baru tanpa isi ulang semuanya.</h1>
             <p class="mt-3 max-w-2xl text-sm leading-6 text-[#68635F] sm:text-[15px]">
@@ -154,8 +154,8 @@
                         <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Kebutuhan & tagihan wajib</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(carryover?.fixed_commitments)}</strong></div>
                         <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Cicilan / utang</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(carryover?.debt_payments)}</strong></div>
                         <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Target tabungan</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(carryover?.savings_target)}</strong></div>
-                        <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Safety buffer</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(carryover?.safety_buffer)}</strong></div>
-                        <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Ruang personal berdua</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(Number(carryover?.personal_owner || 0) + Number(carryover?.personal_partner || 0))}</strong></div>
+                        <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Dana penyangga</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(carryover?.safety_buffer)}</strong></div>
+                        <div class="flex justify-between gap-4 py-3"><span class="text-[#6D6964]">Ruang pribadi berdua</span><strong class="font-semibold text-[#1F1F1F]">{rupiah(Number(carryover?.personal_owner || 0) + Number(carryover?.personal_partner || 0))}</strong></div>
                     </div>
 
                     <a href="/rencana-lengkap" use:inertia class="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#625D59] transition hover:text-[#E1463D]">
@@ -169,7 +169,7 @@
                     <div class="p-5 sm:p-6">
                         <div class="flex items-center gap-2 text-[#F3B2AC]">
                             <ShieldCheck size={17} />
-                            <p class="text-[10px] font-semibold uppercase tracking-[0.16em]">Preview Angka Aman</p>
+                            <p class="text-[10px] font-semibold uppercase tracking-[0.16em]">Pratinjau Angka Aman</p>
                         </div>
 
                         {#if deficitAmount > 0}
@@ -204,7 +204,7 @@
 
                 <div class="mt-3 flex items-start gap-2 px-1 text-[11px] leading-5 text-[#817C77]">
                     <CircleDollarSign class="mt-0.5 shrink-0" size={14} />
-                    <p>Reset ini membuat periode baru. Data bulan sebelumnya tetap tersimpan dan tidak diubah.</p>
+                    <p>Proses ini membuat periode baru. Data bulan sebelumnya tetap tersimpan dan tidak diubah.</p>
                 </div>
             </aside>
         </form>
