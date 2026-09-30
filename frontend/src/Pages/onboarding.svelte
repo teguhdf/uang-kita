@@ -107,7 +107,7 @@
       <p class="text-xs font-semibold text-[#E1463D]">Rencana</p>
       <h1 class="mt-2 text-[30px] font-semibold leading-[1.08] tracking-[-0.045em] text-[#1F1F1F] sm:text-[38px]">Susun kondisi bulan ini.</h1>
       <p class="mt-3 max-w-2xl text-sm leading-6 text-[#68635F] sm:text-[15px]">
-        Mulai dari uang yang benar-benar tersedia sekarang. Pisahkan kebutuhan, cicilan, target, buffer, dan ruang personal supaya Angka Aman punya dasar yang jelas.
+        Mulai dari uang yang benar-benar tersedia sekarang. Pisahkan kebutuhan, cicilan, target, dana penyangga, dan ruang pribadi supaya Angka Aman punya dasar yang jelas.
       </p>
     </section>
 
@@ -116,7 +116,7 @@
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#B8791D]"><RotateCcw size={17} /></div>
         <div>
           <p class="text-sm font-semibold">Struktur {formatPeriod(carryover.sourcePeriod)} sudah dibawa.</p>
-          <p class="mt-1 text-xs leading-5 text-[#806D4B]">Komitmen, target, buffer, dan ruang personal sudah terisi sebagai titik awal. Uang tersedia tidak disalin. Cek ulang semua nominal dan tanggal pemasukan sebelum menyimpan bulan baru.</p>
+          <p class="mt-1 text-xs leading-5 text-[#806D4B]">Komitmen, target, dana penyangga, dan ruang pribadi sudah terisi sebagai titik awal. Uang tersedia tidak disalin. Cek ulang semua nominal dan tanggal pemasukan sebelum menyimpan bulan baru.</p>
         </div>
       </div>
     {/if}
@@ -185,7 +185,7 @@
             <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF5E9] text-[#C88B2A]"><Landmark size={20} /></div>
             <div>
               <h2 class="text-base font-semibold text-[#1F1F1F]">Yang sudah punya tujuan</h2>
-              <p class="mt-1 text-xs leading-5 text-[#77716D]">Masukkan total hingga pemasukan berikutnya. Nggak perlu mencatat sampai level struk belanja.</p>
+              <p class="mt-1 text-xs leading-5 text-[#77716D]">Masukkan total hingga pemasukan berikutnya. Nggak perlu mencatat sampai tingkat struk belanja.</p>
             </div>
           </div>
 
@@ -206,7 +206,7 @@
               <p class="mt-1.5 text-[11px] text-[#817C77]">{rupiah(form.savings_target)}</p>
             </div>
             <div>
-              <label for="safety_buffer" class="mb-2 block text-sm font-semibold text-[#3F3B38]">Safety buffer</label>
+              <label for="safety_buffer" class="mb-2 block text-sm font-semibold text-[#3F3B38]">Dana penyangga</label>
               <input id="safety_buffer" type="number" min="0" step="1000" bind:value={form.safety_buffer} class="uk-input px-4 py-3.5 text-[15px]" />
               <p class="mt-1.5 text-[11px] text-[#817C77]">{rupiah(form.safety_buffer)}</p>
             </div>
@@ -217,7 +217,7 @@
           <div class="flex items-start gap-3">
             <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F5F2EF] text-[#6D6964]"><WalletCards size={20} /></div>
             <div>
-              <h2 class="text-base font-semibold text-[#1F1F1F]">Ruang personal</h2>
+              <h2 class="text-base font-semibold text-[#1F1F1F]">Ruang pribadi</h2>
               <p class="mt-1 text-xs leading-5 text-[#77716D]">Supaya tidak semua pengeluaran kecil terasa seperti harus minta izin.</p>
             </div>
           </div>
@@ -242,7 +242,7 @@
           <div class="p-5 sm:p-6">
             <div class="flex items-center gap-2 text-[#E1463D]">
               <ShieldCheck size={17} />
-              <p class="text-[10px] font-semibold uppercase tracking-[0.16em]">Preview Angka Aman</p>
+              <p class="text-[10px] font-semibold uppercase tracking-[0.16em]">Pratinjau Angka Aman</p>
             </div>
 
             {#if deficitAmount > 0}
@@ -272,7 +272,7 @@
         <div class="mt-3 rounded-2xl border border-[#EEEAE6] bg-[#FAFAF8] p-4">
           <div class="flex items-start gap-3">
             <PiggyBank class="mt-0.5 shrink-0 text-[#E1463D]" size={17} />
-            <p class="text-xs leading-5 text-[#77716D]">Ini bukan budgeting harian detail. Tujuannya menemukan angka yang membantu kalian mengambil keputusan sampai pemasukan berikutnya.</p>
+            <p class="text-xs leading-5 text-[#77716D]">Ini bukan pencatatan anggaran harian yang rinci. Tujuannya menemukan angka yang membantu kalian mengambil keputusan sampai pemasukan berikutnya.</p>
           </div>
         </div>
       </aside>
