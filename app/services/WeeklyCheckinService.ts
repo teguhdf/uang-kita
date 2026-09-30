@@ -62,7 +62,8 @@ export const WeeklyCheckinService = {
 		const household = await UangKitaRepository.findHouseholdByUser(userId);
 		if (!household) return null;
 
-		const plan = await UangKitaRepository.findPlanByPeriod(household.id, currentPeriod());
+		const period = currentPeriod(new Date(now));
+		const plan = await UangKitaRepository.findPlanByPeriod(household.id, period);
 		if (!plan) return null;
 
 		const metrics = calculateMoneyMetrics(plan, new Date(now));
