@@ -1,19 +1,9 @@
-/**
- * Inertia Service
- *
- * Minimal config — template handling (Vite, CSRF, favicon, flash)
- * udah dihandle langsung oleh hyper-express-inertia package.
- */
-
 import { Inertia } from "hyper-express-inertia";
 import { SessionStore } from "../session/store";
 import type { Request } from "../../type";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 
-// ---------------------------------------------------------------------------
-// Asset version
-// ---------------------------------------------------------------------------
 let pkg: { version?: string } = { version: "1.0.0" };
 try {
 	pkg = JSON.parse(
@@ -21,9 +11,6 @@ try {
 	);
 } catch {}
 
-// ---------------------------------------------------------------------------
-// Vite helpers
-// ---------------------------------------------------------------------------
 function getViteDevUrl(): string {
 	try {
 		const portFile = path.join(process.cwd(), ".vite-port");
@@ -34,9 +21,6 @@ function getViteDevUrl(): string {
 	return `http://localhost:${process.env.VITE_PORT || "5173"}`;
 }
 
-// ---------------------------------------------------------------------------
-// Vite manifest (production)
-// ---------------------------------------------------------------------------
 let viteManifest: Record<string, { file: string; css?: string[] }> = {};
 try {
 	const manifestPath = path.join(process.cwd(), "dist/.vite/manifest.json");
@@ -45,25 +29,27 @@ try {
 	}
 } catch {}
 
-// ---------------------------------------------------------------------------
-// Create Inertia adapter — single instance untuk seluruh app
-// ---------------------------------------------------------------------------
+const isProduction = process.env.NODE_ENV === "production";
+
+function productionAsset(entryKey: string, fallback: string): string {
+	const entry = viteManifest[entryKey];
+	if (entry?.file) return entry.file;
+	return fallback;
+}
+
 export const inertia = new Inertia({
 	version: pkg.version,
-
-	// Template customization — package handles rendering
-	title: "Laju",
-	favicon: "/public/new-laju.png",
+	title: "UANG KITA · Sedalam Ini.",
+	favicon: "/public/sedalam-ini-mark.svg",
 	csrf: true,
-	devUrl: process.env.NODE_ENV !== "production" ? getViteDevUrl() : undefined,
-	manifest: process.env.NODE_ENV === "production" ? viteManifest : undefined,
+	devUrl: !isProduction ? getViteDevUrl() : undefined,
+	manifest: isProduction ? viteManifest : undefined,
 	script: "src/app.js",
-	stylesheet: "src/index.css",
+	stylesheet: isProduction
+		? productionAsset("src/index.css", "src/index.css")
+		: "src/index.css",
 });
 
-// ---------------------------------------------------------------------------
-// Shared props (Laju-specific — needs SessionStore)
-// ---------------------------------------------------------------------------
 inertia.shareFunc("user", (req) => {
 	const session = SessionStore.get(req as unknown as Request);
 	if (!session.user_id) return null;
@@ -82,7 +68,7 @@ inertia.shareFunc("flash", (req) => {
 	return Object.keys(flashMessages).length > 0 ? flashMessages : null;
 });
 
-inertia.share("appName", "Laju");
+inertia.share("appName", "UANG KITA");
 inertia.share("appVersion", pkg.version);
 
 export default inertia;

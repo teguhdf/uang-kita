@@ -1,16 +1,17 @@
 /**
  * Test Setup File
- * Runs before all tests to configure the testing environment.
+ * Runs before each test file to configure the testing environment.
+ *
+ * Environment values must be assigned at module load time, not inside
+ * beforeAll(), because application modules may open the SQLite connection
+ * as soon as they are imported.
  */
 
-import { beforeAll, afterAll } from "vitest";
+import { afterAll } from "vitest";
 
-beforeAll(() => {
-	// Set test environment
-	process.env.NODE_ENV = "test";
-	process.env.DB_CONNECTION = "test";
-	process.env.APP_URL = "http://localhost:5555";
-});
+process.env.NODE_ENV = "test";
+process.env.DB_CONNECTION = "test";
+process.env.APP_URL = "http://localhost:5555";
 
 afterAll(() => {
 	// Cleanup if needed

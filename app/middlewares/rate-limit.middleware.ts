@@ -9,12 +9,21 @@ import { logWarn } from "../services/Logger";
 import inertia from "../services/inertia";
 
 /**
- * Get client IP from Cloudflare proxy or fallback to request.ip
+ * Get client IP from reverse proxy headers.
+ * Nginx overwrites X-Real-IP, so prefer it over client-supplied forwarding headers.
  */
 function getClientIP(request: Request): string {
 	return (
-		(request.headers["cf-connecting-ip"] as string) || request.ip || "unknown"
+		(request.headers["x-real-ip"] as string) ||
+		(request.headers["cf-connecting-ip"] as string) ||
+		request.ip ||
+		"unknown"
 	);
+}
+
+function routeScopedKey(prefix: string, request: Request): string {
+	const pathname = (request.url || "").split("?")[0] || "/";
+	return `${prefix}:${pathname}:${getClientIP(request)}`;
 }
 
 export interface RateLimitOptions {
@@ -27,63 +36,46 @@ export interface RateLimitOptions {
 	handler?: (request: Request, response: Response) => void; // Custom handler
 }
 
-/**
- * Create rate limit middleware
- */
+/** Create rate limit middleware */
 export function rateLimit(options: RateLimitOptions = {}) {
 	const config = {
-		windowMs: options.windowMs || 15 * 60 * 1000, // 15 minutes
+		windowMs: options.windowMs || 15 * 60 * 1000,
 		maxRequests: options.maxRequests || 100,
 		message: options.message || "Too many requests, please try again later",
 		statusCode: options.statusCode || 429,
 		keyGenerator:
-			options.keyGenerator || ((request: Request) => getClientIP(request)),
+			options.keyGenerator || ((request: Request) => `general:${getClientIP(request)}`),
 		skip: options.skip || (() => false),
 		handler: options.handler,
 	};
 
 	return async (request: Request, response: Response) => {
-		// Skip if condition met
-		if (config.skip(request)) {
-			return;
-		}
+		if (config.skip(request)) return;
 
-		// Generate key
 		const key = config.keyGenerator(request);
-
-		// Check rate limit
 		const result = rateLimiter.check(key, {
 			windowMs: config.windowMs,
 			maxRequests: config.maxRequests,
 			message: config.message,
 		});
 
-		// Set rate limit headers
 		response.setHeader("X-RateLimit-Limit", config.maxRequests.toString());
 		response.setHeader("X-RateLimit-Remaining", result.remaining.toString());
-		response.setHeader(
-			"X-RateLimit-Reset",
-			new Date(result.resetAt).toISOString(),
-		);
+		response.setHeader("X-RateLimit-Reset", new Date(result.resetAt).toISOString());
 
-		// If rate limit exceeded
 		if (!result.allowed) {
 			response.setHeader("Retry-After", result.retryAfter?.toString() || "60");
 
 			logWarn("Rate limit exceeded", {
-				ip: request.ip,
+				ip: getClientIP(request),
 				url: request.url,
 				method: request.method,
 				key,
 				retryAfter: result.retryAfter,
 			});
 
-			// Use custom handler if provided
-			if (config.handler) {
-				return config.handler(request, response);
-			}
+			if (config.handler) return config.handler(request, response);
 
-			// Default response
 			return response.status(config.statusCode).json({
 				success: false,
 				error: {
@@ -97,60 +89,47 @@ export function rateLimit(options: RateLimitOptions = {}) {
 	};
 }
 
-/**
- * Preset rate limiters for common use cases
- */
-
-// Strict rate limit for authentication endpoints
 export const authRateLimit = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
-	maxRequests: 5, // 5 requests
+	windowMs: 15 * 60 * 1000,
+	maxRequests: 5,
 	message: "Too many login attempts, please try again later",
+	keyGenerator: (request) => routeScopedKey("auth", request),
 	handler: (request: Request, response: Response) => {
 		const isResetPassword = request.url.includes("/reset-password");
-		const redirectPath = isResetPassword ? "/reset-password" : "/login";
-		inertia.flash(
-			response,
-			"error",
-			"Too many attempts, please try again later",
-		);
+		const redirectPath = isResetPassword ? "/forgot-password" : "/login";
+		inertia.flash(response, "error", "Terlalu banyak percobaan. Coba lagi beberapa saat nanti.");
 		return inertia.redirect(response, redirectPath);
 	},
 });
 
-// Moderate rate limit for API endpoints
 export const apiRateLimit = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
-	maxRequests: 100, // 100 requests
+	windowMs: 15 * 60 * 1000,
+	maxRequests: 100,
 	message: "Too many API requests, please try again later",
+	keyGenerator: (request) => routeScopedKey("api", request),
 });
 
-// Lenient rate limit for general routes
 export const generalRateLimit = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
-	maxRequests: 1000, // 1000 requests
+	windowMs: 15 * 60 * 1000,
+	maxRequests: 1000,
 	message: "Too many requests, please try again later",
+	keyGenerator: (request) => routeScopedKey("general", request),
 });
 
-// Very strict for password reset
 export const passwordResetRateLimit = rateLimit({
-	windowMs: 60 * 60 * 1000, // 1 hour
-	maxRequests: 3, // 3 requests
+	windowMs: 60 * 60 * 1000,
+	maxRequests: 3,
 	message: "Too many password reset attempts, please try again later",
+	keyGenerator: (request) => routeScopedKey("password-reset", request),
 	handler: (_request: Request, response: Response) => {
-		inertia.flash(
-			response,
-			"error",
-			"Too many password reset attempts, please try again later",
-		);
+		inertia.flash(response, "error", "Terlalu banyak permintaan reset kata sandi. Coba lagi nanti.");
 		return inertia.redirect(response, "/forgot-password");
 	},
 });
 
-// Email sending rate limit
 export const emailRateLimit = rateLimit({
-	windowMs: 60 * 60 * 1000, // 1 hour
-	maxRequests: 10, // 10 emails
+	windowMs: 60 * 60 * 1000,
+	maxRequests: 10,
 	message: "Too many emails sent, please try again later",
 	keyGenerator: (request) => {
 		const userId = request.user?.id || getClientIP(request);
@@ -158,10 +137,9 @@ export const emailRateLimit = rateLimit({
 	},
 });
 
-// File upload rate limit
 export const uploadRateLimit = rateLimit({
-	windowMs: 60 * 60 * 1000, // 1 hour
-	maxRequests: 50, // 50 uploads
+	windowMs: 60 * 60 * 1000,
+	maxRequests: 50,
 	message: "Too many file uploads, please try again later",
 	keyGenerator: (request) => {
 		const userId = request.user?.id || getClientIP(request);
@@ -169,24 +147,17 @@ export const uploadRateLimit = rateLimit({
 	},
 });
 
-// Create account rate limit (by IP)
 export const createAccountRateLimit = rateLimit({
-	windowMs: 60 * 60 * 1000, // 1 hour
-	maxRequests: 3, // 3 accounts per hour
+	windowMs: 60 * 60 * 1000,
+	maxRequests: 3,
 	message: "Too many account creation attempts, please try again later",
+	keyGenerator: (request) => routeScopedKey("register", request),
 	handler: (_request: Request, response: Response) => {
-		inertia.flash(
-			response,
-			"error",
-			"Too many account creation attempts, please try again later",
-		);
+		inertia.flash(response, "error", "Terlalu banyak percobaan membuat akun. Coba lagi nanti.");
 		return inertia.redirect(response, "/register");
 	},
 });
 
-/**
- * Rate limit by user ID (for authenticated routes)
- */
 export const userRateLimit = (
 	maxRequests: number = 100,
 	windowMs: number = 15 * 60 * 1000,
@@ -198,13 +169,10 @@ export const userRateLimit = (
 			const userId = request.user?.id || getClientIP(request);
 			return `user:${userId}`;
 		},
-		skip: (request) => !request.user, // Skip if not authenticated
+		skip: (request) => !request.user,
 	});
 };
 
-/**
- * Rate limit by custom key
- */
 export const customRateLimit = (
 	key: string,
 	maxRequests: number = 100,
@@ -213,7 +181,7 @@ export const customRateLimit = (
 	return rateLimit({
 		windowMs,
 		maxRequests,
-		keyGenerator: () => key,
+		keyGenerator: () => `custom:${key}`,
 	});
 };
 

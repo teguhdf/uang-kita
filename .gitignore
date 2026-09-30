@@ -1,12 +1,24 @@
 node_modules
-# Keep environment variables out of version control
+
+# Secrets / environment
 .env
+.env.*.local
+*.key
+*.pem
+
+# Databases and persisted runtime data
 production.sqlite3
 dev.sqlite3
 data/*
 !data/.gitkeep
 storage/*
 !storage/.gitkeep
+backups/*
+!backups/.gitkeep
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
 
 # Vite dynamic port file
 .vite-port
@@ -18,7 +30,7 @@ test-results/
 playwright-report/
 playwright/.cache/
 
-# Logs
+# Logs and builds
 logs/
 *.log
 build

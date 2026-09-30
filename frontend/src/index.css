@@ -1,73 +1,109 @@
 @import "tailwindcss";
 
-/* Scan templates folder for class usage */
 @source "../../templates/**/*.{html,eta}";
 
 @theme {
-    --font-family-sans: "Inter", sans-serif;
+    --font-family-sans: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
     --font-family-mono: "Fira Code", monospace;
 
-    --color-brand-400: #fb923c;
-    --color-brand-500: #f97316;
-    --color-brand-600: #ea580c;
-    --color-brand-900: #431407;
+    --color-brand-50: #fff4f2;
+    --color-brand-100: #ffe7e3;
+    --color-brand-200: #ffcfc8;
+    --color-brand-300: #ffa79c;
+    --color-brand-400: #f57b6b;
+    --color-brand-500: #e1463d;
+    --color-brand-600: #c7352d;
+    --color-brand-700: #a62b25;
+    --color-brand-800: #872824;
+    --color-brand-900: #702725;
 
-    --color-primary-50: #fff7ed;
-    --color-primary-100: #ffedd5;
-    --color-primary-200: #fed7aa;
-    --color-primary-300: #fdba74;
-    --color-primary-400: #fb923c;
-    --color-primary-500: #f97316;
-    --color-primary-600: #ea580c;
-    --color-primary-700: #c2410c;
-    --color-primary-800: #9a3412;
-    --color-primary-900: #7c2d12;
-    --color-primary-950: #431407;
+    --color-charcoal: #1f1f1f;
+    --color-warm-white: #fafaf8;
+    --color-soft-beige: #eae6e1;
+    --color-sage: #a7b1a1;
 
-    --color-slate-850: #1e293b;
-    --color-slate-950: #020617;
+    --color-primary-50: #fff4f2;
+    --color-primary-100: #ffe7e3;
+    --color-primary-200: #ffcfc8;
+    --color-primary-300: #ffa79c;
+    --color-primary-400: #f57b6b;
+    --color-primary-500: #e1463d;
+    --color-primary-600: #c7352d;
+    --color-primary-700: #a62b25;
+    --color-primary-800: #872824;
+    --color-primary-900: #702725;
+    --color-primary-950: #431918;
 
-    --shadow-soft:
-        0 2px 15px -3px rgba(0, 0, 0, 0.07),
-        0 10px 20px -2px rgba(0, 0, 0, 0.04);
-
-    --animate-blob: blob 7s infinite;
-
-    /* Dark mode colors */
-    --color-dark-50: #f8fafc;
-    --color-dark-100: #f1f5f9;
-    --color-dark-200: #e2e8f0;
-    --color-dark-300: #cbd5e1;
-    --color-dark-400: #94a3b8;
-    --color-dark-500: #64748b;
-    --color-dark-600: #475569;
-    --color-dark-700: #334155;
-    --color-dark-800: #1e293b;
-    --color-dark-900: #0f172a;
-    --color-dark-950: #020617;
+    --shadow-soft: 0 10px 35px rgba(31, 31, 31, 0.06);
 }
 
-@variant dark (&:where(.dark, .dark *)) {
+:root {
+    color-scheme: light;
+    background: #ffffff;
+    color: #1f1f1f;
+    font-family: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
 }
 
-@keyframes blob {
-    0% {
-        transform: translate(0px, 0px) scale(1);
-    }
-    33% {
-        transform: translate(30px, -50px) scale(1.1);
-    }
-    66% {
-        transform: translate(-20px, 20px) scale(0.9);
-    }
-    100% {
-        transform: translate(0px, 0px) scale(1);
-    }
+html {
+    background: #ffffff;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    :root {
-        color-scheme: dark;
-    }
+body {
+    margin: 0;
+    min-width: 320px;
+    background: #ffffff;
+    color: #1f1f1f;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+::selection {
+    background: rgba(225, 70, 61, 0.16);
+    color: #1f1f1f;
+}
+
+:focus-visible {
+    outline: 2px solid #e1463d;
+    outline-offset: 2px;
+}
+
+.uk-card {
+    border: 1px solid #ece9e5;
+    background: #ffffff;
+    border-radius: 24px;
+    box-shadow: 0 10px 35px rgba(31, 31, 31, 0.045);
+}
+
+.uk-muted-surface {
+    background: #fafaf8;
+    border: 1px solid #efede9;
+}
+
+.uk-label {
+    color: #6d6964;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.uk-input {
+    width: 100%;
+    border: 1px solid #dedbd6;
+    border-radius: 16px;
+    background: #ffffff;
+    color: #1f1f1f;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.uk-input:focus {
+    border-color: #e1463d;
+    box-shadow: 0 0 0 4px rgba(225, 70, 61, 0.09);
+    outline: none;
 }

@@ -17,9 +17,7 @@ export interface SessionRow {
 }
 
 export const SessionRepository = {
-	/**
-	 * Find session by ID
-	 */
+	/** Find session by ID */
 	findById(id: string): SessionRow | undefined {
 		return DB.get<SessionRow>(
 			"SELECT id, user_id, user_agent, expires_at, data, created_at, updated_at FROM sessions WHERE id = ?",
@@ -27,9 +25,7 @@ export const SessionRepository = {
 		);
 	},
 
-	/**
-	 * Find sessions by user ID
-	 */
+	/** Find sessions by user ID */
 	findByUserId(userId: string): SessionRow[] {
 		return DB.all<SessionRow>(
 			"SELECT id, user_id, user_agent, expires_at, data, created_at, updated_at FROM sessions WHERE user_id = ?",
@@ -37,9 +33,6 @@ export const SessionRepository = {
 		);
 	},
 
-	/**
-	 * Create a new session
-	 */
 	create(
 		id: string,
 		userId: string,
@@ -54,9 +47,6 @@ export const SessionRepository = {
 		);
 	},
 
-	/**
-	 * Update session data and expiry
-	 */
 	update(id: string, data: string, expiresAt: string | null): void {
 		DB.run(
 			"UPDATE sessions SET data = ?, expires_at = ?, updated_at = ? WHERE id = ?",
@@ -64,25 +54,18 @@ export const SessionRepository = {
 		);
 	},
 
-	/**
-	 * Delete a session by ID
-	 */
 	delete(id: string): void {
 		DB.run("DELETE FROM sessions WHERE id = ?", [id]);
 	},
 
-	/**
-	 * Delete all sessions for a user
-	 */
 	deleteByUserId(userId: string): void {
 		DB.run("DELETE FROM sessions WHERE user_id = ?", [userId]);
 	},
 
-	/**
-	 * Delete expired sessions
-	 */
 	deleteExpired(): void {
-		DB.run("DELETE FROM sessions WHERE expires_at < datetime('now')");
+		DB.run("DELETE FROM sessions WHERE expires_at IS NOT NULL AND expires_at < ?", [
+			new Date().toISOString(),
+		]);
 	},
 };
 

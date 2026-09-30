@@ -1,71 +1,33 @@
-/**
- * Auth Validation Schemas
- * Schemas for AuthHandler (login, register, password reset)
- */
+import { z } from "zod";
+import { field } from "./common.validator";
 
-import { z } from 'zod';
-import { field } from './common.validator';
+const newPassword = z
+	.string()
+	.min(8, "Kata sandi minimal 8 karakter")
+	.max(128, "Kata sandi terlalu panjang");
 
-interface EmailPhoneData {
-  email?: string;
-  phone?: string;
-}
-
-/**
- * Login schema
- * Used by: AuthHandler.processLogin
- */
 export const loginSchema = z.object({
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  password: z.string().min(1, 'Password is required'),
-}).refine(
-  (data: EmailPhoneData) => data.email || data.phone,
-  {
-    message: 'Email or phone number is required',
-    path: ['email'],
-  }
-);
+	email: field.email,
+	password: z.string().min(1, "Kata sandi wajib diisi").max(128),
+});
 
-/**
- * Register schema
- * Used by: AuthHandler.processRegister
- */
 export const registerSchema = z.object({
-  name: field.name,
-  email: field.email,
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+	name: field.name,
+	email: field.email,
+	phone: field.phone.optional(),
+	password: newPassword,
 });
 
-/**
- * Forgot password schema
- * Used by: AuthHandler.sendResetPassword
- */
 export const forgotPasswordSchema = z.object({
-  email: z.string().optional(),
-  phone: z.string().optional(),
-}).refine(
-  (data: EmailPhoneData) => data.email || data.phone,
-  {
-    message: 'Email or phone number is required',
-    path: ['email'],
-  }
-);
-
-/**
- * Reset password schema
- * Used by: AuthHandler.resetPassword
- */
-export const resetPasswordSchema = z.object({
-  id: z.string().min(1, 'Invalid token'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+	email: field.email,
 });
 
-/**
- * Change password schema
- * Used by: AuthHandler.changePassword
- */
+export const resetPasswordSchema = z.object({
+	id: z.string().min(1, "Token tidak valid"),
+	password: newPassword,
+});
+
 export const changePasswordSchema = z.object({
-  current_password: z.string().min(1, 'Current password is required'),
-  new_password: z.string().min(6, 'New password must be at least 6 characters'),
+	current_password: z.string().min(1, "Kata sandi saat ini wajib diisi").max(128),
+	new_password: newPassword,
 });
