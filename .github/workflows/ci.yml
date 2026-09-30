@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
-      - feat/uang-kita-foundation
+      - Staging
+      - 'feat/**'
   pull_request:
     branches:
       - main
+      - Staging
 
 permissions:
   contents: read
