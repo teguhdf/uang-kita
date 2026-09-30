@@ -2,6 +2,7 @@ import AuthHandler from "../app/handlers/auth.handler";
 import AppHandler from "../app/handlers/app.handler";
 import UangKitaHandler from "../app/handlers/uang-kita.handler";
 import MoneyPulseHandler from "../app/handlers/money-pulse.handler";
+import MonthlyResetHandler from "../app/handlers/monthly-reset.handler";
 import PublicHandler from "../app/handlers/public.handler";
 import UploadHandler from "../app/handlers/upload.handler";
 import StorageHandler from "../app/handlers/storage.handler";
@@ -51,8 +52,11 @@ Route.post("/reset-password", [authRateLimit], AuthHandler.resetPassword);
 
 /** UANG KITA */
 Route.get("/home", [authRequired], AppHandler.homePage);
-Route.get("/onboarding", [authRequired], UangKitaHandler.onboardingPage);
+Route.get("/onboarding", [authRequired], MonthlyResetHandler.entry);
+Route.get("/rencana-lengkap", [authRequired], UangKitaHandler.onboardingPage);
 Route.post("/onboarding", [authRequired], UangKitaHandler.saveOnboarding);
+Route.get("/mulai-bulan-baru", [authRequired], MonthlyResetHandler.page);
+Route.post("/mulai-bulan-baru", [authRequired], MonthlyResetHandler.save);
 Route.get("/pulse-uang", [authRequired], MoneyPulseHandler.page);
 Route.post("/pulse-uang", [authRequired], MoneyPulseHandler.save);
 Route.get(
