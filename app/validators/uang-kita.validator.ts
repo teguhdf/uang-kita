@@ -43,6 +43,13 @@ export const monthlyPlanSchema = z.object({
 		.refine(isStrictIsoDate, "Tanggal pemasukan berikutnya tidak valid"),
 });
 
+export const monthlyResetSchema = z.object({
+	available_money: amount,
+	next_income_date: z
+		.string()
+		.refine(isStrictIsoDate, "Tanggal pemasukan berikutnya tidak valid"),
+});
+
 export const decisionRuleSchema = z
 	.object({
 		free_limit: amount,
@@ -73,6 +80,7 @@ export const purchaseDecisionSchema = z.object({
 });
 
 export type MonthlyPlanInput = z.infer<typeof monthlyPlanSchema>;
+export type MonthlyResetInput = z.infer<typeof monthlyResetSchema>;
 export type DecisionRuleInput = z.infer<typeof decisionRuleSchema>;
 export type PartnerInviteInput = z.infer<typeof partnerInviteSchema>;
 export type PurchaseDecisionInput = z.infer<typeof purchaseDecisionSchema>;
