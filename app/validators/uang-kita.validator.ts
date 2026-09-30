@@ -79,8 +79,31 @@ export const purchaseDecisionSchema = z.object({
 	outcome: z.enum(["bought", "later", "cancelled"]),
 });
 
+export const weeklyCheckinSchema = z
+	.object({
+		status: z.enum(["aman", "perlu_dibicarakan"]),
+		topic: z
+			.enum(["pengeluaran", "target", "cicilan", "pembelian", "lainnya"])
+			.nullable()
+			.optional(),
+		note: z
+			.string()
+			.trim()
+			.max(240, "Catatan maksimal 240 karakter")
+			.nullable()
+			.optional(),
+	})
+	.refine(
+		(data) => data.status !== "perlu_dibicarakan" || Boolean(data.topic),
+		{
+			message: "Pilih hal yang ingin dibicarakan bersama",
+			path: ["topic"],
+		},
+	);
+
 export type MonthlyPlanInput = z.infer<typeof monthlyPlanSchema>;
 export type MonthlyResetInput = z.infer<typeof monthlyResetSchema>;
 export type DecisionRuleInput = z.infer<typeof decisionRuleSchema>;
 export type PartnerInviteInput = z.infer<typeof partnerInviteSchema>;
 export type PurchaseDecisionInput = z.infer<typeof purchaseDecisionSchema>;
+export type WeeklyCheckinInput = z.infer<typeof weeklyCheckinSchema>;
