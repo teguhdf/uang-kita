@@ -2,6 +2,7 @@
     import { page, router, inertia } from "@inertiajs/svelte";
     import {
         Home,
+        Activity,
         CalendarDays,
         MessageCircle,
         UsersRound,
@@ -16,6 +17,7 @@
 
     const navItems = [
         { key: "home", label: "Beranda", href: "/home", icon: Home },
+        { key: "pulse", label: "Pulse", href: "/pulse-uang", icon: Activity },
         { key: "plan", label: "Rencana", href: "/onboarding", icon: CalendarDays },
         { key: "decisions", label: "Keputusan", href: "/aman-kalau-dibeli", icon: MessageCircle },
         { key: "couple", label: "Kita", href: "/aturan-keputusan", icon: UsersRound },
@@ -115,16 +117,16 @@
     </main>
 
     <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-[#EDE9E5] bg-white/98 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(31,31,31,0.045)] backdrop-blur lg:hidden">
-        <div class="mx-auto grid h-[66px] max-w-xl grid-cols-4 px-2">
+        <div class="mx-auto grid h-[66px] max-w-xl grid-cols-5 px-1">
             {#each navItems as item}
                 {@const Icon = item.icon}
                 <a
                     href={item.href}
                     use:inertia
-                    class="flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition {active === item.key ? 'text-[#E1463D]' : 'text-[#77716D]'}"
+                    class="flex flex-col items-center justify-center gap-1 text-[9px] font-semibold transition {active === item.key ? 'text-[#E1463D]' : 'text-[#77716D]'}"
                 >
-                    <span class="flex h-8 w-10 items-center justify-center rounded-xl {active === item.key ? 'bg-[#FFF1EF]' : ''}">
-                        <Icon size={19} strokeWidth={active === item.key ? 2 : 1.7} />
+                    <span class="flex h-8 w-9 items-center justify-center rounded-xl {active === item.key ? 'bg-[#FFF1EF]' : ''}">
+                        <Icon size={18} strokeWidth={active === item.key ? 2 : 1.7} />
                     </span>
                     {item.label}
                 </a>
