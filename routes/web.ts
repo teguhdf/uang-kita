@@ -3,6 +3,7 @@ import AppHandler from "../app/handlers/app.handler";
 import UangKitaHandler from "../app/handlers/uang-kita.handler";
 import MoneyPulseHandler from "../app/handlers/money-pulse.handler";
 import MonthlyResetHandler from "../app/handlers/monthly-reset.handler";
+import WeeklyCheckinHandler from "../app/handlers/weekly-checkin.handler";
 import PublicHandler from "../app/handlers/public.handler";
 import UploadHandler from "../app/handlers/upload.handler";
 import StorageHandler from "../app/handlers/storage.handler";
@@ -59,6 +60,8 @@ Route.get("/mulai-bulan-baru", [authRequired], MonthlyResetHandler.page);
 Route.post("/mulai-bulan-baru", [authRequired], MonthlyResetHandler.save);
 Route.get("/pulse-uang", [authRequired], MoneyPulseHandler.page);
 Route.post("/pulse-uang", [authRequired], MoneyPulseHandler.save);
+Route.get("/mingguan", [authRequired], WeeklyCheckinHandler.page);
+Route.post("/mingguan", [authRequired], WeeklyCheckinHandler.save);
 Route.get(
 	"/aman-kalau-dibeli",
 	[authRequired],
