@@ -71,11 +71,18 @@ export const WeeklyCheckinService = {
 		const since = lastCheckin?.created_at || now - WEEK_MS;
 		const decisions = await WeeklyCheckinRepository.countDecisionsSince(household.id, since);
 		const recentCheckins = await WeeklyCheckinRepository.listRecent(household.id, 6);
+		const previousCheckin = recentCheckins[1] || null;
 		const nextDueAt = lastCheckin ? lastCheckin.created_at + WEEK_MS : null;
 		const dueNow = !nextDueAt || now >= nextDueAt;
 		const daysUntilDue = nextDueAt && !dueNow
 			? Math.max(1, Math.ceil((nextDueAt - now) / DAY_MS))
 			: 0;
+
+		const safeWeeklyDelta = dueNow
+			? (lastCheckin ? metrics.safeWeekly - lastCheckin.safe_weekly : null)
+			: (lastCheckin && previousCheckin
+				? lastCheckin.safe_weekly - previousCheckin.safe_weekly
+				: null);
 
 		return {
 			metrics,
@@ -86,9 +93,7 @@ export const WeeklyCheckinService = {
 			dueNow,
 			nextDueAt,
 			daysUntilDue,
-			safeWeeklyDelta: lastCheckin
-				? metrics.safeWeekly - lastCheckin.safe_weekly
-				: null,
+			safeWeeklyDelta,
 			conversationPrompt: buildConversationPrompt(metrics, lastCheckin, decisions),
 		};
 	},
