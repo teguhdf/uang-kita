@@ -53,6 +53,7 @@ describe("Ngobrol Mingguan", () => {
 		const before = await WeeklyCheckinService.getSummary(userId, now);
 		expect(before?.dueNow).toBe(true);
 		expect(before?.lastCheckin).toBeNull();
+		expect(before?.safeWeeklyDelta).toBeNull();
 
 		await WeeklyCheckinService.save(
 			userId,
@@ -64,6 +65,7 @@ describe("Ngobrol Mingguan", () => {
 		expect(after?.dueNow).toBe(false);
 		expect(after?.daysUntilDue).toBe(6);
 		expect(after?.lastCheckin?.status).toBe("aman");
+		expect(after?.safeWeeklyDelta).toBeNull();
 
 		await expect(
 			WeeklyCheckinService.save(
@@ -80,6 +82,9 @@ describe("Ngobrol Mingguan", () => {
 				now + 7 * DAY_MS,
 			),
 		).resolves.toMatchObject({ status: "perlu_dibicarakan", topic: "pengeluaran" });
+
+		const afterSecond = await WeeklyCheckinService.getSummary(userId, now + 7 * DAY_MS);
+		expect(afterSecond?.safeWeeklyDelta).toBe(0);
 	});
 
 	it("captures decision counts since the previous weekly conversation", async () => {
